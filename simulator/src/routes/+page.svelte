@@ -105,7 +105,13 @@
 	$: finalInvestmentValue = yearlyData.length > 0 ? yearlyData[yearlyData.length - 1].investmentValue : 0;
 	$: finalNetPosition = yearlyData.length > 0 ? yearlyData[yearlyData.length - 1].netPosition : 0;
 	$: isPositiveROI = finalNetPosition > 0;
-	$: breakEvenYear = yearlyData.findIndex(d => d.netPosition > 0) + 1 || null;
+	// Break-even: year when investment returns compensate for total interest paid
+	// Investment returns = investmentValue - totalPaid (what you put in)
+	// This should equal or exceed totalInterest (the cost of borrowing)
+	$: breakEvenYear = yearlyData.findIndex(d => {
+		const investmentReturns = d.investmentValue - d.totalPaid;
+		return investmentReturns >= totalInterest;
+	}) + 1 || null;
 	
 	// Volatility-adjusted returns (using simplified model)
 	$: bestCaseReturn = investmentRate + investmentVolatility;
@@ -191,19 +197,24 @@
 							loan cost.
 						</p>
 					</div>
-					<!-- Currency Selector -->
-					<div class="flex items-center gap-2">
-						<span class="text-sm font-medium text-muted-foreground">Currency:</span>
-						<select 
-							bind:value={selectedCurrencyCode}
-							class="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-						>
-							{#each currencies as currency}
-								<option value={currency.code}>
-									{currency.symbol} {currency.code}
-								</option>
-							{/each}
-						</select>
+					<!-- Currency Selector & Reset Button -->
+					<div class="flex items-center gap-3">
+						<div class="flex items-center gap-2">
+							<span class="text-sm font-medium text-muted-foreground">Currency:</span>
+							<select 
+								bind:value={selectedCurrencyCode}
+								class="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+							>
+								{#each currencies as currency}
+									<option value={currency.code}>
+										{currency.symbol} {currency.code}
+									</option>
+								{/each}
+							</select>
+						</div>
+						<Button onclick={resetValues} variant="outline" size="sm">
+							Reset
+						</Button>
 					</div>
 				</div>
 			</div>
@@ -270,7 +281,7 @@
 						<h2 class="mb-3 text-base font-semibold">Loan Parameters</h2>
 
 						<!-- Loan Amount -->
-						<div class="space-y-2">
+						<div class="space-y-1.5">
 							<div class="flex items-center gap-2">
 								<label for="loan-amount" class="text-sm font-medium">Loan Amount</label>
 								<Tooltip.Root>
@@ -298,28 +309,28 @@
 										</p>
 									</Tooltip.Content>
 								</Tooltip.Root>
+								<span class="ml-auto text-sm text-muted-foreground">
+									{formatCurrency(loanAmount)}
+								</span>
 							</div>
-							<div class="flex items-center gap-4">
+							<div class="flex items-center gap-3">
 								<Input
 									id="loan-amount"
 									type="number"
 									bind:value={loanAmount}
 									min="0"
 									step="1000"
+									class="w-32"
+								/>
+								<input
+									type="range"
+									bind:value={loanAmount}
+									min="10000"
+									max="1000000"
+									step="5000"
 									class="flex-1"
 								/>
-								<span class="w-32 text-right text-sm text-muted-foreground">
-									{formatCurrency(loanAmount)}
-								</span>
 							</div>
-							<input
-								type="range"
-								bind:value={loanAmount}
-								min="10000"
-								max="1000000"
-								step="5000"
-								class="w-full"
-							/>
 						</div>
 
 						<Separator class="my-6" />
@@ -354,8 +365,11 @@
 										</p>
 									</Tooltip.Content>
 								</Tooltip.Root>
+                                <span class="ml-auto text-sm text-muted-foreground">
+									{formatCurrency(downPayment)}
+								</span>
 							</div>
-							<div class="flex items-center gap-4">
+							<div class="flex items-center gap-3">
 								<Input
 									id="down-payment"
 									type="number"
@@ -363,20 +377,18 @@
 									min="0"
 									max={loanAmount}
 									step="1000"
-									class="flex-1"
+									class="w-32"
 								/>
-								<span class="w-32 text-right text-sm text-muted-foreground">
-									{formatCurrency(downPayment)}
-								</span>
+								
+                                <input
+                                    type="range"
+                                    bind:value={downPayment}
+                                    min="0"
+                                    max={loanAmount}
+                                    step="1000"
+                                    class="flex-1"
+                                />
 							</div>
-							<input
-								type="range"
-								bind:value={downPayment}
-								min="0"
-								max={loanAmount}
-								step="1000"
-								class="w-full"
-							/>
 							<p class="text-xs text-muted-foreground">
 								{((downPayment / loanAmount) * 100).toFixed(1)}% of loan amount
 							</p>
@@ -414,8 +426,11 @@
 										</p>
 									</Tooltip.Content>
 								</Tooltip.Root>
+                                <span class="ml-auto text-sm text-muted-foreground">
+                                    {formatPercent(interestRate)}
+                                </span>
 							</div>
-							<div class="flex items-center gap-4">
+							<div class="flex items-center gap-3">
 								<Input
 									id="interest-rate"
 									type="number"
@@ -423,20 +438,17 @@
 									min="0"
 									max="20"
 									step="0.1"
-									class="flex-1"
+									class="w-32"
 								/>
-								<span class="w-32 text-right text-sm text-muted-foreground">
-									{formatPercent(interestRate)}
-								</span>
+                                <input
+                                    type="range"
+                                    bind:value={interestRate}
+                                    min="0"
+                                    max="15"
+                                    step="0.1"
+                                    class="flex-1"
+                                />
 							</div>
-							<input
-								type="range"
-								bind:value={interestRate}
-								min="0"
-								max="15"
-								step="0.1"
-								class="w-full"
-							/>
 						</div>
 
 						<Separator class="my-6" />
@@ -471,8 +483,11 @@
 										</p>
 									</Tooltip.Content>
 								</Tooltip.Root>
+                                <span class="ml-auto text-sm text-muted-foreground">
+                                    {loanTermYears} years
+                                </span>
 							</div>
-							<div class="flex items-center gap-4">
+							<div class="flex items-center gap-3">
 								<Input
 									id="loan-term"
 									type="number"
@@ -480,30 +495,21 @@
 									min="1"
 									max="40"
 									step="1"
-									class="flex-1"
+									class="w-32"
 								/>
-								<span class="w-32 text-right text-sm text-muted-foreground">
-									{loanTermYears} years
-								</span>
+                                <input
+                                    type="range"
+                                    bind:value={loanTermYears}
+                                    min="5"
+                                    max="40"
+                                    step="1"
+                                    class="flex-1"
+                                />
 							</div>
-							<input
-								type="range"
-								bind:value={loanTermYears}
-								min="5"
-								max="40"
-								step="1"
-								class="w-full"
-							/>
 							<p class="text-xs text-muted-foreground">
 								{numberOfPayments} monthly payments
 							</p>
 						</div>
-
-						<Separator class="my-6" />
-
-					<Button onclick={resetValues} variant="outline" class="w-full">
-							Reset to Default Values
-						</Button>
 					</div>
 
 					<!-- Investment Parameters -->
@@ -539,8 +545,11 @@
 										</p>
 									</Tooltip.Content>
 								</Tooltip.Root>
+                                <span class="ml-auto text-right text-sm text-muted-foreground">
+                                    {formatPercent(investmentRate)}
+                                </span>
 							</div>
-							<div class="flex items-center gap-4">
+							<div class="flex items-center gap-3">
 								<Input
 									id="investment-rate"
 									type="number"
@@ -548,20 +557,17 @@
 									min="0"
 									max="30"
 									step="0.1"
-									class="flex-1"
+									class="w-32"
 								/>
-								<span class="w-32 text-right text-sm text-muted-foreground">
-									{formatPercent(investmentRate)}
-								</span>
+                                <input
+                                    type="range"
+                                    bind:value={investmentRate}
+                                    min="0"
+                                    max="20"
+                                    step="0.5"
+                                    class="flex-1"
+                                />
 							</div>
-							<input
-								type="range"
-								bind:value={investmentRate}
-								min="0"
-								max="20"
-								step="0.5"
-								class="w-full"
-							/>
 						</div>
 
 						<Separator class="my-6" />
@@ -595,8 +601,11 @@
 										</p>
 									</Tooltip.Content>
 								</Tooltip.Root>
+                                <span class="ml-auto text-sm {riskColor}">
+                                    {riskLevel} Risk
+                                </span>
 							</div>
-							<div class="flex items-center gap-4">
+							<div class="flex items-center gap-3">
 								<Input
 									id="volatility"
 									type="number"
@@ -604,20 +613,17 @@
 									min="0"
 									max="100"
 									step="1"
-									class="flex-1"
+									class="w-32"
 								/>
-								<span class="w-32 text-right text-sm {riskColor}">
-									{riskLevel} Risk
-								</span>
+                                <input
+                                    type="range"
+                                    bind:value={investmentVolatility}
+                                    min="0"
+                                    max="50"
+                                    step="1"
+                                    class="flex-1"
+                                />
 							</div>
-							<input
-								type="range"
-								bind:value={investmentVolatility}
-								min="0"
-								max="50"
-								step="1"
-								class="w-full"
-							/>
 						</div>
 
 						<Separator class="my-6" />
@@ -651,8 +657,11 @@
 										</p>
 									</Tooltip.Content>
 								</Tooltip.Root>
+                                <span class="ml-auto text-sm text-muted-foreground">
+                                    {analysisYears} years
+                                </span>
 							</div>
-							<div class="flex items-center gap-4">
+							<div class="flex items-center gap-3">
 								<Input
 									id="analysis-years"
 									type="number"
@@ -660,20 +669,17 @@
 									min={loanTermYears}
 									max="60"
 									step="1"
-									class="flex-1"
+									class="w-32"
 								/>
-								<span class="w-32 text-right text-sm text-muted-foreground">
-									{analysisYears} years
-								</span>
+                                <input
+                                    type="range"
+                                    bind:value={analysisYears}
+                                    min={loanTermYears}
+                                    max="60"
+                                    step="1"
+                                    class="flex-1"
+                                />
 							</div>
-							<input
-								type="range"
-								bind:value={analysisYears}
-								min={loanTermYears}
-								max="60"
-								step="1"
-								class="w-full"
-							/>
 							<p class="text-xs text-muted-foreground">
 								{analysisYears - loanTermYears} years after loan ends
 							</p>
