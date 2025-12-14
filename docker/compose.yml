@@ -35,6 +35,8 @@ services:
       - 3000
     networks:
       - pangolin
+    labels:
+      com.centurylinklabs.watchtower.enable: true
 
 networks:
   pangolin:
