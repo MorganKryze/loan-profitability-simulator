@@ -4,6 +4,7 @@
 	import { Separator } from "$lib/components/ui/separator";
 	import * as Select from "$lib/components/ui/select";
 	import * as Tooltip from "$lib/components/ui/tooltip";
+	import * as Sidebar from "$lib/components/ui/sidebar";
 
 	// Currency configuration
 	type Currency = {
@@ -183,45 +184,167 @@
 </script>
 
 <Tooltip.Provider>
-	<div class="min-h-screen bg-background p-4 md:p-6 lg:p-8">
-		<div class="space-y-4">
-			<!-- Header -->
-			<div class="space-y-2">
-				<div class="flex items-start justify-between gap-4">
-					<div class="flex-1">
-						<h1 class="text-3xl font-bold tracking-tight md:text-4xl">
-							Loan Profitability Simulator
-						</h1>
-						<p class="text-muted-foreground">
-							Adjust the parameters below to see how they affect your monthly payments and total
-							loan cost.
+	<Sidebar.Provider>
+		<Sidebar.Root side="left" collapsible="icon">
+			<Sidebar.Header class="p-4 border-b">
+				<div class="flex items-center justify-between gap-2">
+					<h2 class="text-lg font-semibold group-data-[collapsible=icon]:hidden">Parameters</h2>
+					<Sidebar.Trigger />
+				</div>
+			</Sidebar.Header>
+			<Sidebar.Content class="p-4 space-y-6 group-data-[collapsible=icon]:hidden">
+				<!-- Loan Parameters -->
+				<div class="space-y-4">
+					<h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Loan Parameters</h3>
+					
+					<!-- Loan Amount -->
+					<div class="space-y-2">
+						<label for="loan-amount" class="text-sm font-medium">Loan Amount</label>
+						<Input
+							id="loan-amount"
+							type="number"
+							bind:value={loanAmount}
+							min="0"
+							step="1000"
+						/>
+						<p class="text-xs text-muted-foreground">{formatCurrency(loanAmount)}</p>
+					</div>
+
+					<!-- Down Payment -->
+					<div class="space-y-2">
+						<label for="down-payment" class="text-sm font-medium">Down Payment</label>
+						<Input
+							id="down-payment"
+							type="number"
+							bind:value={downPayment}
+							min="0"
+							max={loanAmount}
+							step="1000"
+						/>
+						<p class="text-xs text-muted-foreground">
+							{formatCurrency(downPayment)} ({((downPayment / loanAmount) * 100).toFixed(1)}%)
 						</p>
 					</div>
-					<!-- Currency Selector & Reset Button -->
-					<div class="flex items-center gap-3">
-						<div class="flex items-center gap-2">
-							<span class="text-sm font-medium text-muted-foreground">Currency:</span>
-							<select 
-								bind:value={selectedCurrencyCode}
-								class="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-							>
-								{#each currencies as currency}
-									<option value={currency.code}>
-										{currency.symbol} {currency.code}
-									</option>
-								{/each}
-							</select>
-						</div>
-						<Button onclick={resetValues} variant="outline" size="sm">
-							Reset
-						</Button>
+
+					<!-- Interest Rate -->
+					<div class="space-y-2">
+						<label for="interest-rate" class="text-sm font-medium">Annual Interest Rate (%)</label>
+						<Input
+							id="interest-rate"
+							type="number"
+							bind:value={interestRate}
+							min="0"
+							max="20"
+							step="0.1"
+						/>
+						<p class="text-xs text-muted-foreground">{formatPercent(interestRate)}</p>
+					</div>
+
+					<!-- Loan Term -->
+					<div class="space-y-2">
+						<label for="loan-term" class="text-sm font-medium">Loan Term (Years)</label>
+						<Input
+							id="loan-term"
+							type="number"
+							bind:value={loanTermYears}
+							min="1"
+							max="40"
+							step="1"
+						/>
+						<p class="text-xs text-muted-foreground">{numberOfPayments} monthly payments</p>
 					</div>
 				</div>
-			</div>
 
-			<!-- Dashboard: Key Metrics First -->
-			<!-- Top Row: Most Important Info -->
-			<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 mb-4">
+				<Separator />
+
+				<!-- Investment Parameters -->
+				<div class="space-y-4">
+					<h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Investment Parameters</h3>
+					
+					<!-- Expected Return Rate -->
+					<div class="space-y-2">
+						<label for="investment-rate" class="text-sm font-medium">Expected Annual Return (%)</label>
+						<Input
+							id="investment-rate"
+							type="number"
+							bind:value={investmentRate}
+							min="0"
+							max="30"
+							step="0.1"
+						/>
+						<p class="text-xs text-muted-foreground">{formatPercent(investmentRate)}</p>
+					</div>
+
+					<!-- Volatility -->
+					<div class="space-y-2">
+						<label for="volatility" class="text-sm font-medium">Volatility (Risk %)</label>
+						<Input
+							id="volatility"
+							type="number"
+							bind:value={investmentVolatility}
+							min="0"
+							max="100"
+							step="1"
+						/>
+						<p class="text-xs {riskColor}">{riskLevel} Risk</p>
+					</div>
+
+					<!-- Analysis Period -->
+					<div class="space-y-2">
+						<label for="analysis-years" class="text-sm font-medium">Analysis Period (Years)</label>
+						<Input
+							id="analysis-years"
+							type="number"
+							bind:value={analysisYears}
+							min={loanTermYears}
+							max="60"
+							step="1"
+						/>
+						<p class="text-xs text-muted-foreground">{analysisYears - loanTermYears} years after loan ends</p>
+					</div>
+				</div>
+			</Sidebar.Content>
+			<Sidebar.Footer class="p-4 border-t group-data-[collapsible=icon]:hidden">
+				<Button onclick={resetValues} variant="outline" class="w-full">
+					Reset to Defaults
+				</Button>
+			</Sidebar.Footer>
+		</Sidebar.Root>
+
+		<Sidebar.Inset>
+			<div class="min-h-screen bg-background p-4 md:p-6 lg:p-8">
+				<div class="space-y-4">
+					<!-- Header -->
+					<div class="space-y-2">
+						<div class="flex items-start justify-between gap-4">
+							<div>
+								<h1 class="text-3xl font-bold tracking-tight md:text-4xl">
+									Loan Profitability Simulator
+								</h1>
+								<p class="text-muted-foreground">
+									Adjust the parameters in the sidebar to see how they affect your results.
+								</p>
+							</div>
+							<!-- Currency Selector -->
+							<div class="flex items-center gap-2">
+								<span class="text-sm font-medium text-muted-foreground">Currency:</span>
+								<select 
+									bind:value={selectedCurrencyCode}
+									class="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+								>
+									{#each currencies as currency}
+										<option value={currency.code}>
+											{currency.symbol} {currency.code}
+										</option>
+									{/each}
+								</select>
+							</div>
+						</div>
+					</div>
+
+					<!-- Dashboard: Key Metrics First -->
+					<!-- Top Row: Most Important Info -->
+					<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 mb-4">
 				<!-- Monthly Payment - Most Prominent -->
 				<div class="sm:col-span-2 lg:col-span-2 rounded-lg border bg-linear-to-br from-primary/10 to-primary/5 p-6 shadow-sm">
 					<p class="text-sm font-medium text-muted-foreground">Monthly Payment</p>
@@ -267,439 +390,24 @@
 			</div>
 
 			<!-- Main Dashboard Grid -->
-			<div class="grid gap-4 lg:grid-cols-12">
-				<!-- LEFT: Input Parameters (Compact) -->
-				<div class="lg:col-span-4 space-y-4">
-					<!-- Loan Parameters -->
-					<div class="rounded-lg border bg-card p-4 shadow-sm">
-						<h2 class="mb-3 text-base font-semibold">Loan Parameters</h2>
-
-						<!-- Loan Amount -->
-						<div class="space-y-1.5">
-							<div class="flex items-center gap-2">
-								<label for="loan-amount" class="text-sm font-medium">Loan Amount</label>
-								<Tooltip.Root>
-									<Tooltip.Trigger>
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											width="16"
-											height="16"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											class="text-muted-foreground"
-										>
-											<circle cx="12" cy="12" r="10"></circle>
-											<path d="M12 16v-4"></path>
-											<path d="M12 8h.01"></path>
-										</svg>
-									</Tooltip.Trigger>
-									<Tooltip.Content>
-										<p class="max-w-xs text-sm">
-											The total price of the property or item you want to purchase.
-										</p>
-									</Tooltip.Content>
-								</Tooltip.Root>
-								<span class="ml-auto text-sm text-muted-foreground">
-									{formatCurrency(loanAmount)}
-								</span>
+			<div class="space-y-4">
+				<!-- Volatility Scenarios & Key Metrics -->
+				<div class="rounded-lg border bg-card p-4 shadow-sm">
+					<h3 class="mb-3 text-base font-semibold">Investment Analysis</h3>
+					
+					<!-- Volatility Scenarios -->
+					<h4 class="font-medium mb-3">Volatility Scenarios</h4>
+					<div class="space-y-3">
+						<div class="flex justify-between items-center p-3 rounded-lg bg-green-50 dark:bg-green-950/50">
+							<div>
+								<p class="text-sm font-medium text-green-700 dark:text-green-300">Best Case ({formatPercent(bestCaseReturn)})</p>
+								<p class="text-xs text-green-600 dark:text-green-400">+1 standard deviation</p>
 							</div>
-							<div class="flex items-center gap-3">
-								<Input
-									id="loan-amount"
-									type="number"
-									bind:value={loanAmount}
-									min="0"
-									step="1000"
-									class="w-32"
-								/>
-								<input
-									type="range"
-									bind:value={loanAmount}
-									min="10000"
-									max="1000000"
-									step="5000"
-									class="flex-1"
-								/>
-							</div>
+							<p class="text-lg font-semibold text-green-700 dark:text-green-300">{formatCurrency(bestCaseValue)}</p>
 						</div>
-
-						<Separator class="my-6" />
-
-						<!-- Down Payment -->
-						<div class="space-y-2">
-							<div class="flex items-center gap-2">
-								<label for="down-payment" class="text-sm font-medium">Down Payment</label>
-								<Tooltip.Root>
-									<Tooltip.Trigger>
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											width="16"
-											height="16"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											class="text-muted-foreground"
-										>
-											<circle cx="12" cy="12" r="10"></circle>
-											<path d="M12 16v-4"></path>
-											<path d="M12 8h.01"></path>
-										</svg>
-									</Tooltip.Trigger>
-									<Tooltip.Content>
-										<p class="max-w-xs text-sm">
-											The initial payment you make upfront. A larger down payment reduces the
-											loan amount and total interest paid.
-										</p>
-									</Tooltip.Content>
-								</Tooltip.Root>
-                                <span class="ml-auto text-sm text-muted-foreground">
-									{formatCurrency(downPayment)}
-								</span>
-							</div>
-							<div class="flex items-center gap-3">
-								<Input
-									id="down-payment"
-									type="number"
-									bind:value={downPayment}
-									min="0"
-									max={loanAmount}
-									step="1000"
-									class="w-32"
-								/>
-								
-                                <input
-                                    type="range"
-                                    bind:value={downPayment}
-                                    min="0"
-                                    max={loanAmount}
-                                    step="1000"
-                                    class="flex-1"
-                                />
-							</div>
-							<p class="text-xs text-muted-foreground">
-								{((downPayment / loanAmount) * 100).toFixed(1)}% of loan amount
-							</p>
-						</div>
-
-						<Separator class="my-6" />
-
-						<!-- Interest Rate -->
-						<div class="space-y-2">
-							<div class="flex items-center gap-2">
-								<label for="interest-rate" class="text-sm font-medium">Annual Interest Rate</label>
-								<Tooltip.Root>
-									<Tooltip.Trigger>
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											width="16"
-											height="16"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											class="text-muted-foreground"
-										>
-											<circle cx="12" cy="12" r="10"></circle>
-											<path d="M12 16v-4"></path>
-											<path d="M12 8h.01"></path>
-										</svg>
-									</Tooltip.Trigger>
-									<Tooltip.Content>
-										<p class="max-w-xs text-sm">
-											The yearly percentage rate charged by the lender. A fixed rate remains the
-											same throughout the loan term.
-										</p>
-									</Tooltip.Content>
-								</Tooltip.Root>
-                                <span class="ml-auto text-sm text-muted-foreground">
-                                    {formatPercent(interestRate)}
-                                </span>
-							</div>
-							<div class="flex items-center gap-3">
-								<Input
-									id="interest-rate"
-									type="number"
-									bind:value={interestRate}
-									min="0"
-									max="20"
-									step="0.1"
-									class="w-32"
-								/>
-                                <input
-                                    type="range"
-                                    bind:value={interestRate}
-                                    min="0"
-                                    max="15"
-                                    step="0.1"
-                                    class="flex-1"
-                                />
-							</div>
-						</div>
-
-						<Separator class="my-6" />
-
-						<!-- Loan Term -->
-						<div class="space-y-2">
-							<div class="flex items-center gap-2">
-								<label for="loan-term" class="text-sm font-medium">Loan Term (Years)</label>
-								<Tooltip.Root>
-									<Tooltip.Trigger>
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											width="16"
-											height="16"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											class="text-muted-foreground"
-										>
-											<circle cx="12" cy="12" r="10"></circle>
-											<path d="M12 16v-4"></path>
-											<path d="M12 8h.01"></path>
-										</svg>
-									</Tooltip.Trigger>
-									<Tooltip.Content>
-										<p class="max-w-xs text-sm">
-											The length of time you have to repay the loan. Longer terms mean lower
-											monthly payments but more interest paid overall.
-										</p>
-									</Tooltip.Content>
-								</Tooltip.Root>
-                                <span class="ml-auto text-sm text-muted-foreground">
-                                    {loanTermYears} years
-                                </span>
-							</div>
-							<div class="flex items-center gap-3">
-								<Input
-									id="loan-term"
-									type="number"
-									bind:value={loanTermYears}
-									min="1"
-									max="40"
-									step="1"
-									class="w-32"
-								/>
-                                <input
-                                    type="range"
-                                    bind:value={loanTermYears}
-                                    min="5"
-                                    max="40"
-                                    step="1"
-                                    class="flex-1"
-                                />
-							</div>
-							<p class="text-xs text-muted-foreground">
-								{numberOfPayments} monthly payments
-							</p>
-						</div>
-					</div>
-
-					<!-- Investment Parameters -->
-					<div class="rounded-lg border bg-card p-6 shadow-sm">
-						<h2 class="mb-6 text-xl font-semibold">Investment Parameters</h2>
-
-						<!-- Expected Return Rate -->
-						<div class="space-y-2">
-							<div class="flex items-center gap-2">
-								<label for="investment-rate" class="text-sm font-medium">Expected Annual Return</label>
-								<Tooltip.Root>
-									<Tooltip.Trigger>
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											width="16"
-											height="16"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											class="text-muted-foreground"
-										>
-											<circle cx="12" cy="12" r="10"></circle>
-											<path d="M12 16v-4"></path>
-											<path d="M12 8h.01"></path>
-										</svg>
-									</Tooltip.Trigger>
-									<Tooltip.Content>
-										<p class="max-w-xs text-sm">
-											The expected annual return rate if you invested the money instead. S&P 500 historical average is ~7-10%.
-										</p>
-									</Tooltip.Content>
-								</Tooltip.Root>
-                                <span class="ml-auto text-right text-sm text-muted-foreground">
-                                    {formatPercent(investmentRate)}
-                                </span>
-							</div>
-							<div class="flex items-center gap-3">
-								<Input
-									id="investment-rate"
-									type="number"
-									bind:value={investmentRate}
-									min="0"
-									max="30"
-									step="0.1"
-									class="w-32"
-								/>
-                                <input
-                                    type="range"
-                                    bind:value={investmentRate}
-                                    min="0"
-                                    max="20"
-                                    step="0.5"
-                                    class="flex-1"
-                                />
-							</div>
-						</div>
-
-						<Separator class="my-6" />
-
-						<!-- Volatility -->
-						<div class="space-y-2">
-							<div class="flex items-center gap-2">
-								<label for="volatility" class="text-sm font-medium">Volatility (Risk)</label>
-								<Tooltip.Root>
-									<Tooltip.Trigger>
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											width="16"
-											height="16"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											class="text-muted-foreground"
-										>
-											<circle cx="12" cy="12" r="10"></circle>
-											<path d="M12 16v-4"></path>
-											<path d="M12 8h.01"></path>
-										</svg>
-									</Tooltip.Trigger>
-									<Tooltip.Content>
-										<p class="max-w-xs text-sm">
-											Standard deviation of returns. Higher volatility means higher risk. Bonds: ~5%, Stocks: ~15-20%, Crypto: ~50%+.
-										</p>
-									</Tooltip.Content>
-								</Tooltip.Root>
-                                <span class="ml-auto text-sm {riskColor}">
-                                    {riskLevel} Risk
-                                </span>
-							</div>
-							<div class="flex items-center gap-3">
-								<Input
-									id="volatility"
-									type="number"
-									bind:value={investmentVolatility}
-									min="0"
-									max="100"
-									step="1"
-									class="w-32"
-								/>
-                                <input
-                                    type="range"
-                                    bind:value={investmentVolatility}
-                                    min="0"
-                                    max="50"
-                                    step="1"
-                                    class="flex-1"
-                                />
-							</div>
-						</div>
-
-						<Separator class="my-6" />
-
-						<!-- Analysis Period -->
-						<div class="space-y-2">
-							<div class="flex items-center gap-2">
-								<label for="analysis-years" class="text-sm font-medium">Analysis Period</label>
-								<Tooltip.Root>
-									<Tooltip.Trigger>
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											width="16"
-											height="16"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											class="text-muted-foreground"
-										>
-											<circle cx="12" cy="12" r="10"></circle>
-											<path d="M12 16v-4"></path>
-											<path d="M12 8h.01"></path>
-										</svg>
-									</Tooltip.Trigger>
-									<Tooltip.Content>
-										<p class="max-w-xs text-sm">
-											Total years to analyze, including years after the loan term. Allows you to see long-term compound growth.
-										</p>
-									</Tooltip.Content>
-								</Tooltip.Root>
-                                <span class="ml-auto text-sm text-muted-foreground">
-                                    {analysisYears} years
-                                </span>
-							</div>
-							<div class="flex items-center gap-3">
-								<Input
-									id="analysis-years"
-									type="number"
-									bind:value={analysisYears}
-									min={loanTermYears}
-									max="60"
-									step="1"
-									class="w-32"
-								/>
-                                <input
-                                    type="range"
-                                    bind:value={analysisYears}
-                                    min={loanTermYears}
-                                    max="60"
-                                    step="1"
-                                    class="flex-1"
-                                />
-							</div>
-							<p class="text-xs text-muted-foreground">
-								{analysisYears - loanTermYears} years after loan ends
-							</p>
-						</div>
-					</div>
-				</div>
-
-				<!-- CENTER & RIGHT: Analysis & Visualization -->
-				<div class="lg:col-span-8 space-y-4">
-					<!-- Volatility Scenarios & Key Metrics -->
-					<div class="rounded-lg border bg-card p-4 shadow-sm">
-						<h3 class="mb-3 text-base font-semibold">Investment Analysis</h3>
-						
-						<!-- Volatility Scenarios -->
-						<h4 class="font-medium mb-3">Volatility Scenarios</h4>
-						<div class="space-y-3">
-							<div class="flex justify-between items-center p-3 rounded-lg bg-green-50 dark:bg-green-950/50">
-								<div>
-									<p class="text-sm font-medium text-green-700 dark:text-green-300">Best Case ({formatPercent(bestCaseReturn)})</p>
-									<p class="text-xs text-green-600 dark:text-green-400">+1 standard deviation</p>
-								</div>
-								<p class="text-lg font-semibold text-green-700 dark:text-green-300">{formatCurrency(bestCaseValue)}</p>
-							</div>
-							<div class="flex justify-between items-center p-3 rounded-lg bg-secondary/50">
-								<div>
-									<p class="text-sm font-medium">Expected ({formatPercent(investmentRate)})</p>
+						<div class="flex justify-between items-center p-3 rounded-lg bg-secondary/50">
+							<div>
+								<p class="text-sm font-medium">Expected ({formatPercent(investmentRate)})</p>
 									<p class="text-xs text-muted-foreground">Base scenario</p>
 								</div>
 								<p class="text-lg font-semibold">{formatCurrency(finalInvestmentValue)}</p>
@@ -884,99 +592,6 @@
 				</div>
 			</div>
 		</div>
-	</div>
+		</Sidebar.Inset>
+	</Sidebar.Provider>
 </Tooltip.Provider>
-
-<style>
-	input[type="range"] {
-		-webkit-appearance: none;
-		-moz-appearance: none;
-		appearance: none;
-		width: 100%;
-		height: 0.75rem;
-		background: transparent;
-		cursor: pointer;
-		outline: none;
-		border-radius: 0.75rem;
-	}
-
-	/* WebKit (Chrome, Safari, Edge) - Track */
-	input[type="range"]::-webkit-slider-runnable-track {
-		width: 100%;
-		height: 0.75rem;
-		background: #e2e8f0;
-		border-radius: 0.75rem;
-		border: none;
-	}
-
-	/* WebKit - Thumb */
-	input[type="range"]::-webkit-slider-thumb {
-		-webkit-appearance: none;
-		appearance: none;
-		height: 1.5rem;
-		width: 1.5rem;
-		border-radius: 50%;
-		background: #3b82f6;
-		cursor: pointer;
-		margin-top: -0.375rem;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-		transition: all 0.2s ease;
-	}
-
-	input[type="range"]::-webkit-slider-thumb:hover {
-		background: #2563eb;
-		transform: scale(1.1);
-		box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
-	}
-
-	/* Firefox - Track */
-	input[type="range"]::-moz-range-track {
-		width: 100%;
-		height: 0.75rem;
-		background: #e2e8f0;
-		border-radius: 0.75rem;
-		border: none;
-	}
-
-	/* Firefox - Thumb */
-	input[type="range"]::-moz-range-thumb {
-		height: 1.5rem;
-		width: 1.5rem;
-		border-radius: 50%;
-		background: #3b82f6;
-		border: none;
-		cursor: pointer;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-		transition: all 0.2s ease;
-	}
-
-	input[type="range"]::-moz-range-thumb:hover {
-		background: #2563eb;
-		transform: scale(1.1);
-		box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
-	}
-
-	/* Focus states */
-	input[type="range"]:focus {
-		outline: none;
-	}
-
-	input[type="range"]:focus::-webkit-slider-thumb {
-		outline: 2px solid #3b82f6;
-		outline-offset: 2px;
-	}
-
-	input[type="range"]:focus::-moz-range-thumb {
-		outline: 2px solid #3b82f6;
-		outline-offset: 2px;
-	}
-
-	/* Dark mode support */
-	:global(.dark) input[type="range"]::-webkit-slider-runnable-track {
-		background: #334155;
-	}
-
-	:global(.dark) input[type="range"]::-moz-range-track {
-		background: #334155;
-	}
-</style>
