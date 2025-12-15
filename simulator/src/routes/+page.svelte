@@ -40,6 +40,7 @@
 		investmentRate: number;
 		investmentVolatility: number;
 		additionalYears: number;
+		inflationRate: number;
 	} = {
 		loanAmount: 200000,
 		interestRate: 4.5,
@@ -51,6 +52,7 @@
 		investmentRate: 7.0,
 		investmentVolatility: 3,
 		additionalYears: 10,
+		inflationRate: 2.5,
 	};
 
 	// Investment presets
@@ -100,6 +102,7 @@
 	let investmentRate = DEFAULTS.investmentRate;
 	let investmentVolatility = DEFAULTS.investmentVolatility;
 	let additionalYears = DEFAULTS.additionalYears;
+	let inflationRate = DEFAULTS.inflationRate;
 
 	// Clamp values to respect min/max constraints
 	$: loanAmount = Math.max(0, Math.min(10000000, loanAmount));
@@ -112,6 +115,10 @@
 	$: investmentRate = Math.max(0, Math.min(30, investmentRate));
 	$: investmentVolatility = Math.max(0, Math.min(100, investmentVolatility));
 	$: additionalYears = Math.max(0, Math.min(30, additionalYears));
+	$: inflationRate = Math.max(0, Math.min(20, inflationRate));
+	
+	// Real return rate (inflation-adjusted)
+	$: realInvestmentRate = investmentRate - inflationRate;
 	
 	// Total analysis period = loan term + additional years
 	$: analysisYears = loanTermYears + additionalYears;
@@ -157,11 +164,16 @@
 	type YearlyData = {
 		year: number;
 		investmentValue: number;
+		investmentValueReal: number; // Inflation-adjusted investment value
 		interestEarned: number; // Investment gains above principal
+		interestEarnedReal: number; // Real (inflation-adjusted) gains
 		loanBalance: number;
 		totalPaid: number;
+		totalPaidReal: number; // Real value of payments (cheaper over time due to inflation)
 		totalBorrowingCost: number; // Cumulative interest + insurance paid
+		totalBorrowingCostReal: number; // Real borrowing cost
 		netPosition: number;
+		netPositionReal: number; // Real net position
 		isLoanActive: boolean;
 		isDeferralPeriod: boolean;
 	};
@@ -170,6 +182,10 @@
 	$: totalLoanYears = Math.ceil(totalLoanMonths / 12);
 
 	$: yearlyData = (() => {
+		// Explicit dependencies for reactivity
+		const _inflationRate = inflationRate;
+		const _investmentRate = investmentRate;
+		
 		const data: YearlyData[] = [];
 		// Strategy: Take a loan, invest the principal immediately, pay off the loan over time
 		// Investment starts with the borrowed amount (principal)
@@ -177,18 +193,25 @@
 		let loanBalance = principal;
 		let totalPaid = 0; // Track all payments made (principal + interest + insurance)
 		let totalBorrowingCost = 0; // Track only the cost of borrowing (interest + insurance)
-		const monthlyInvestmentRate = investmentRate / 100 / 12;
+		const monthlyInvestmentRate = _investmentRate / 100 / 12;
+		const monthlyInflationRate = _inflationRate / 100 / 12;
 		let totalMonthsElapsed = 0;
+		let cumulativeInflationFactor = 1; // Tracks cumulative inflation for real value calculations
 		
 		// Year 0: Initial state - loan taken, principal invested, no payments yet
 		data.push({
 			year: 0,
 			investmentValue: principal,
+			investmentValueReal: principal,
 			interestEarned: 0,
+			interestEarnedReal: 0,
 			loanBalance: principal,
 			totalPaid: 0,
+			totalPaidReal: 0,
 			totalBorrowingCost: 0,
+			totalBorrowingCostReal: 0,
 			netPosition: principal,
+			netPositionReal: principal,
 			isLoanActive: true,
 			isDeferralPeriod: deferralMonths > 0
 		});
@@ -200,6 +223,9 @@
 				const isDeferralMonth = totalMonthsElapsed <= deferralMonths;
 				const isRepaymentMonth = totalMonthsElapsed > deferralMonths && totalMonthsElapsed <= totalLoanMonths;
 				const isLoanActiveMonth = totalMonthsElapsed <= totalLoanMonths;
+				
+				// Update cumulative inflation factor
+				cumulativeInflationFactor *= (1 + monthlyInflationRate);
 				
 				// Investment grows with compound interest
 				investmentValue *= (1 + monthlyInvestmentRate);
@@ -237,14 +263,26 @@
 			const isDeferralPeriod = totalMonthsElapsed <= deferralMonths;
 			const interestEarned = investmentValue - principal;
 			
+			// Calculate real (inflation-adjusted) values
+			// Real value = Nominal value / cumulative inflation factor
+			const investmentValueReal = investmentValue / cumulativeInflationFactor;
+			const totalPaidReal = totalPaid / cumulativeInflationFactor;
+			const totalBorrowingCostReal = totalBorrowingCost / cumulativeInflationFactor;
+			const interestEarnedReal = investmentValueReal - principal;
+			
 			data.push({
 				year,
 				investmentValue,
+				investmentValueReal,
 				interestEarned,
+				interestEarnedReal,
 				loanBalance: isLoanActive ? loanBalance : 0,
 				totalPaid,
+				totalPaidReal,
 				totalBorrowingCost,
+				totalBorrowingCostReal,
 				netPosition: investmentValue - totalPaid,
+				netPositionReal: investmentValueReal - totalPaidReal,
 				isLoanActive,
 				isDeferralPeriod
 			});
@@ -252,18 +290,35 @@
 		return data;
 	})();
 
-	// Key metrics
+	// Key metrics (nominal)
 	$: finalInvestmentValue = yearlyData.length > 0 ? yearlyData[yearlyData.length - 1].investmentValue : 0;
 	$: finalInterestEarned = yearlyData.length > 0 ? yearlyData[yearlyData.length - 1].interestEarned : 0;
 	$: finalBorrowingCost = yearlyData.length > 0 ? yearlyData[yearlyData.length - 1].totalBorrowingCost : 0;
 	$: finalNetPosition = yearlyData.length > 0 ? yearlyData[yearlyData.length - 1].netPosition : 0;
+	
+	// Key metrics (real / inflation-adjusted)
+	$: finalInvestmentValueReal = yearlyData.length > 0 ? yearlyData[yearlyData.length - 1].investmentValueReal : 0;
+	$: finalInterestEarnedReal = yearlyData.length > 0 ? yearlyData[yearlyData.length - 1].interestEarnedReal : 0;
+	$: finalNetPositionReal = yearlyData.length > 0 ? yearlyData[yearlyData.length - 1].netPositionReal : 0;
+	
 	// Total borrowing cost at loan end (interest + insurance for the entire loan)
 	$: totalLoanBorrowingCost = totalInterest + totalInsuranceCost;
+	// Real borrowing cost adjusted for inflation
+	$: totalLoanBorrowingCostReal = yearlyData.length > 0 ? yearlyData[yearlyData.length - 1].totalBorrowingCostReal : 0;
+	
 	$: isPositiveROI = finalInterestEarned > totalLoanBorrowingCost;
+	$: isPositiveROIReal = finalInterestEarnedReal > totalLoanBorrowingCostReal;
+	
 	// Break-even: year when investment interest earned exceeds the FINAL total borrowing cost
 	// This is when your investment gains cover ALL the costs of the loan
 	$: breakEvenYear = (() => {
 		const found = yearlyData.find(d => d.interestEarned >= totalLoanBorrowingCost);
+		return found ? found.year : null;
+	})();
+	
+	// Real break-even (inflation-adjusted)
+	$: breakEvenYearReal = (() => {
+		const found = yearlyData.find(d => d.interestEarnedReal >= totalLoanBorrowingCostReal);
 		return found ? found.year : null;
 	})();
 	
@@ -371,6 +426,7 @@
 		investmentRate = DEFAULTS.investmentRate;
 		investmentVolatility = DEFAULTS.investmentVolatility;
 		additionalYears = DEFAULTS.additionalYears;
+		inflationRate = DEFAULTS.inflationRate;
 		selectedPresetId = 'custom';
 	}
 </script>
@@ -642,6 +698,29 @@
 						<p class="text-xs {riskColor}">{riskLevel} Risk</p>
 					</div>
 
+					<!-- Inflation Rate -->
+					<div class="space-y-2">
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								{#snippet child({ props })}
+									<label {...props} for="inflation-rate" class="text-sm font-medium cursor-help">Inflation Rate (%) ⓘ</label>
+								{/snippet}
+							</Tooltip.Trigger>
+							<Tooltip.Content>
+								<p>Expected annual inflation (historically ≈ 2-3%). Real returns = Nominal - Inflation</p>
+							</Tooltip.Content>
+						</Tooltip.Root>
+						<Input
+							id="inflation-rate"
+							type="number"
+							bind:value={inflationRate}
+							min="0"
+							max="20"
+							step="0.1"
+						/>
+						<p class="text-xs text-muted-foreground">Real return: {formatPercent(realInvestmentRate)}</p>
+					</div>
+
 					<!-- Analysis Period -->
 					<div class="space-y-2">
 						<Tooltip.Root>
@@ -724,8 +803,13 @@
 						{isPositiveROI ? '📈' : '📉'}
 						{isPositiveROI ? 'Profitable Strategy' : 'Unprofitable Strategy'}
 					</p>
-					<p class="text-4xl font-bold tracking-tight mt-2 {isPositiveROI ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}">
-						{formatCurrency(finalInterestEarned - totalLoanBorrowingCost)}
+					<p class="flex items-baseline gap-2 mt-2">
+						<span class="text-4xl font-bold tracking-tight {isPositiveROI ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}">
+							{formatCurrency(finalInterestEarned - totalLoanBorrowingCost)}
+						</span>
+						<span class="text-sm {isPositiveROIReal ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">
+							(Real: {formatCurrency(finalInterestEarnedReal - totalLoanBorrowingCostReal)})
+						</span>
 					</p>
 					<p class="text-xs text-muted-foreground mt-1">
 						Gains: {formatCurrency(finalInterestEarned)} − Loan cost: {formatCurrency(totalLoanBorrowingCost)}{#if breakEvenYear} · Break-even: Year {breakEvenYear}{/if}
@@ -750,6 +834,7 @@
 				<div class="rounded-lg border bg-card p-3 shadow-sm">
 					<p class="text-xs text-muted-foreground">Investment Value</p>
 					<p class="text-lg font-semibold text-green-600 mt-1">{formatCurrency(finalInvestmentValue)}</p>
+					<p class="text-xs text-muted-foreground">Real: {formatCurrency(finalInvestmentValueReal)}</p>
 				</div>
 				<div class="rounded-lg border bg-card p-3 shadow-sm">
 					<p class="text-xs text-muted-foreground">Total Cost</p>
