@@ -847,10 +847,10 @@
 				<!-- Graph and Analysis Side by Side -->
 				<div class="grid gap-4 lg:grid-cols-2">
 					<!-- Growth Chart (Left) -->
-					<div class="rounded-lg border bg-card p-6 shadow-sm">
+					<div class="rounded-lg border bg-card p-4 shadow-sm flex flex-col">
 						<h3 class="mb-4 text-lg font-semibold">Investment vs Total Repayment</h3>
-						<div class="relative">
-							<Chart.Container config={chartConfig} class="h-80 w-full overflow-hidden">
+						<div class="relative flex-1 min-h-64">
+							<Chart.Container config={chartConfig} class="flex-1 min-h-48 w-full overflow-hidden">
 								<AreaChart
 									legend
 									data={yearlyData}
@@ -897,9 +897,8 @@
 									{/snippet}
 								</AreaChart>
 							</Chart.Container>
-							
 							<!-- Vertical markers overlay -->
-							<div class="absolute inset-0 pointer-events-none" style="left: 50px; right: 16px; top: 16px; bottom: 40px;">
+							<div class="absolute pointer-events-none" style="left: 50px; right: 16px; top: 16px; bottom: 40px;">
 								<!-- Loan ends marker -->
 								<div 
 									class="absolute top-0 bottom-0 w-0.5 bg-primary/60" 
@@ -909,7 +908,6 @@
 										Loan ends
 									</div>
 								</div>
-								
 								<!-- Break-even marker -->
 								{#if breakEvenYear}
 									<div 
@@ -960,7 +958,6 @@
 					<div class="rounded-lg border bg-card p-4 shadow-sm flex flex-col">
 						<h3 class="mb-2 text-base font-semibold">Volatility Scenarios</h3>
 						<p class="text-xs text-muted-foreground mb-3">Investment value after {analysisYears} years based on ±1 standard deviation</p>
-						
 						<Chart.Container config={scenariosChartConfig} class="flex-1 min-h-48 w-full overflow-hidden">
 							<AreaChart
 								legend
