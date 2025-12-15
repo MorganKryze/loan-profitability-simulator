@@ -232,23 +232,17 @@
 				</div>
 
 				<!-- ROI Status -->
-				<div class="sm:col-span-2 lg:col-span-3 rounded-lg border p-4 shadow-sm {isPositiveROI ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800'}">
-					<div class="flex items-center gap-3">
-						<div class="text-3xl">
-							{isPositiveROI ? '📈' : '📉'}
-						</div>
-						<div class="flex-1">
-							<p class="font-semibold {isPositiveROI ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}">
-								{isPositiveROI ? 'Positive ROI' : 'Negative ROI'}
-							</p>
-							<p class="text-sm {isPositiveROI ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">
-								{formatCurrency(finalNetPosition)} after {analysisYears} years
-							</p>
-							{#if breakEvenYear}
-								<p class="text-xs text-muted-foreground">Break-even: Year {breakEvenYear}</p>
-							{/if}
-						</div>
-					</div>
+				<div class="sm:col-span-2 lg:col-span-3 rounded-lg border p-6 shadow-sm {isPositiveROI ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800'}">
+					<p class="text-sm font-medium text-muted-foreground flex items-center gap-2">
+						{isPositiveROI ? '📈' : '📉'}
+						{isPositiveROI ? 'Positive ROI' : 'Negative ROI'}
+					</p>
+					<p class="text-4xl font-bold tracking-tight mt-2 {isPositiveROI ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}">
+						{formatCurrency(finalNetPosition)}
+					</p>
+					<p class="text-xs text-muted-foreground mt-1">
+						After {analysisYears} years{#if breakEvenYear} · Break-even: Year {breakEvenYear}{/if}
+					</p>
 				</div>
 			</div>
 

@@ -13,7 +13,7 @@ const config = {
 			out: 'build'
 		}),
 		alias: {
-			"@/*": "./path/to/lib/*",
+			"@": "./src/lib",
 		},
 	}
 };
