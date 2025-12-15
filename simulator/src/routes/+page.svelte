@@ -889,19 +889,25 @@
 				<!-- Yearly Breakdown Table -->
 					<div class="rounded-lg border bg-card p-6 shadow-sm">
 						<h3 class="mb-4 text-lg font-semibold">Compound Growth Over Time</h3>
-						<div class="overflow-x-auto">
+						<div class="overflow-x-auto max-h-96 overflow-y-auto">
 							<table class="w-full text-sm">
-								<thead>
+								<thead class="sticky top-0 bg-card">
 									<tr class="border-b">
 										<th class="text-left py-2 px-2">Year</th>
 										<th class="text-right py-2 px-2">Investment Value</th>
 										<th class="text-right py-2 px-2">Total Paid</th>
 										<th class="text-right py-2 px-2">Net Position</th>
+										<th class="text-right py-2 px-2">YoY Growth</th>
+										<th class="text-right py-2 px-2">Total Growth</th>
 										<th class="text-center py-2 px-2">Status</th>
 									</tr>
 								</thead>
 								<tbody>
-									{#each yearlyData.filter((_, i) => i % 5 === 4 || i === 0 || i === yearlyData.length - 1 || i === loanTermYears - 1) as data}
+									{#each yearlyData as data, i}
+										{@const prevData = i > 0 ? yearlyData[i - 1] : null}
+										{@const firstData = yearlyData[0]}
+										{@const yoyGrowth = prevData ? ((data.investmentValue - prevData.investmentValue) / prevData.investmentValue) * 100 : 0}
+										{@const totalGrowth = firstData ? ((data.investmentValue - firstData.investmentValue) / firstData.investmentValue) * 100 : 0}
 										<tr class="border-b border-border/50 {data.year === loanTermYears ? 'bg-primary/5' : ''}">
 											<td class="py-2 px-2 font-medium">
 												{data.year}
@@ -913,6 +919,24 @@
 											<td class="text-right py-2 px-2">{formatCurrency(data.totalPaid)}</td>
 											<td class="text-right py-2 px-2 {data.netPosition >= 0 ? 'text-green-600' : 'text-red-600'}">
 												{formatCurrency(data.netPosition)}
+											</td>
+											<td class="text-right py-2 px-2 text-muted-foreground">
+												{#if i === 0}
+													—
+												{:else}
+													<span class="{yoyGrowth >= 0 ? 'text-green-600' : 'text-red-600'}">
+														{yoyGrowth >= 0 ? '+' : ''}{yoyGrowth.toFixed(1)}%
+													</span>
+												{/if}
+											</td>
+											<td class="text-right py-2 px-2 text-muted-foreground">
+												{#if i === 0}
+													—
+												{:else}
+													<span class="{totalGrowth >= 0 ? 'text-green-600' : 'text-red-600'}">
+														{totalGrowth >= 0 ? '+' : ''}{totalGrowth.toFixed(1)}%
+													</span>
+												{/if}
 											</td>
 											<td class="text-center py-2 px-2">
 												{#if data.isLoanActive}
@@ -927,7 +951,7 @@
 							</table>
 						</div>
 						<p class="text-xs text-muted-foreground mt-3">
-							Showing key years: Year 1, every 5 years, loan end (year {loanTermYears}), and final year ({analysisYears})
+							Showing all {analysisYears} years · YoY = year-over-year growth · Total = growth since year 1
 						</p>
 					</div>
 				</div>
