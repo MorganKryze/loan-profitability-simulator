@@ -251,7 +251,16 @@
 					
 					<!-- Loan Amount -->
 					<div class="space-y-2">
-						<label for="loan-amount" class="text-sm font-medium">Loan Amount</label>
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								{#snippet child({ props })}
+									<label {...props} for="loan-amount" class="text-sm font-medium cursor-help">Loan Amount ⓘ</label>
+								{/snippet}
+							</Tooltip.Trigger>
+							<Tooltip.Content>
+								<p>The total amount you want to borrow</p>
+							</Tooltip.Content>
+						</Tooltip.Root>
 						<Input
 							id="loan-amount"
 							type="number"
@@ -265,7 +274,16 @@
 
 					<!-- Down Payment -->
 					<div class="space-y-2">
-						<label for="down-payment" class="text-sm font-medium">Down Payment</label>
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								{#snippet child({ props })}
+									<label {...props} for="down-payment" class="text-sm font-medium cursor-help">Down Payment ⓘ</label>
+								{/snippet}
+							</Tooltip.Trigger>
+							<Tooltip.Content>
+								<p>Initial payment reducing the borrowed amount</p>
+							</Tooltip.Content>
+						</Tooltip.Root>
 						<Input
 							id="down-payment"
 							type="number"
@@ -281,7 +299,16 @@
 
 					<!-- Interest Rate -->
 					<div class="space-y-2">
-						<label for="interest-rate" class="text-sm font-medium">Annual Interest Rate (%)</label>
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								{#snippet child({ props })}
+									<label {...props} for="interest-rate" class="text-sm font-medium cursor-help">Annual Interest Rate (%) ⓘ</label>
+								{/snippet}
+							</Tooltip.Trigger>
+							<Tooltip.Content>
+								<p>The yearly interest rate charged on your loan</p>
+							</Tooltip.Content>
+						</Tooltip.Root>
 						<Input
 							id="interest-rate"
 							type="number"
@@ -295,7 +322,16 @@
 
 					<!-- Loan Term -->
 					<div class="space-y-2">
-						<label for="loan-term" class="text-sm font-medium">Loan Term (Years)</label>
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								{#snippet child({ props })}
+									<label {...props} for="loan-term" class="text-sm font-medium cursor-help">Loan Term (Years) ⓘ</label>
+								{/snippet}
+							</Tooltip.Trigger>
+							<Tooltip.Content>
+								<p>Duration over which you'll repay the loan</p>
+							</Tooltip.Content>
+						</Tooltip.Root>
 						<Input
 							id="loan-term"
 							type="number"
@@ -309,7 +345,16 @@
 
 					<!-- Deferral Period -->
 					<div class="space-y-2">
-						<label for="deferral-months" class="text-sm font-medium">Deferral Period (Months)</label>
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								{#snippet child({ props })}
+									<label {...props} for="deferral-months" class="text-sm font-medium cursor-help">Deferral Period (Months) ⓘ</label>
+								{/snippet}
+							</Tooltip.Trigger>
+							<Tooltip.Content>
+								<p>Grace period before loan repayment begins</p>
+							</Tooltip.Content>
+						</Tooltip.Root>
 						<Input
 							id="deferral-months"
 							type="number"
@@ -352,7 +397,16 @@
 					
 					<!-- Expected Return Rate -->
 					<div class="space-y-2">
-						<label for="investment-rate" class="text-sm font-medium">Expected Annual Return (%)</label>
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								{#snippet child({ props })}
+									<label {...props} for="investment-rate" class="text-sm font-medium cursor-help">Expected Annual Return (%) ⓘ</label>
+								{/snippet}
+							</Tooltip.Trigger>
+							<Tooltip.Content>
+								<p>Average yearly return on your investments (e.g., S&P 500 ≈ 7-10%)</p>
+							</Tooltip.Content>
+						</Tooltip.Root>
 						<Input
 							id="investment-rate"
 							type="number"
@@ -366,7 +420,16 @@
 
 					<!-- Volatility -->
 					<div class="space-y-2">
-						<label for="volatility" class="text-sm font-medium">Volatility (Risk %)</label>
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								{#snippet child({ props })}
+									<label {...props} for="volatility" class="text-sm font-medium cursor-help">Volatility (Risk %) ⓘ</label>
+								{/snippet}
+							</Tooltip.Trigger>
+							<Tooltip.Content>
+								<p>Standard deviation of returns - higher means more risk (S&P 500 ≈ 15-20%)</p>
+							</Tooltip.Content>
+						</Tooltip.Root>
 						<Input
 							id="volatility"
 							type="number"
@@ -380,7 +443,16 @@
 
 					<!-- Analysis Period -->
 					<div class="space-y-2">
-						<label for="analysis-years" class="text-sm font-medium">Analysis Period (Years)</label>
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								{#snippet child({ props })}
+									<label {...props} for="analysis-years" class="text-sm font-medium cursor-help">Analysis Period (Years) ⓘ</label>
+								{/snippet}
+							</Tooltip.Trigger>
+							<Tooltip.Content>
+								<p>Total time to simulate, including years after the loan ends</p>
+							</Tooltip.Content>
+						</Tooltip.Root>
 						<Input
 							id="analysis-years"
 							type="number"
