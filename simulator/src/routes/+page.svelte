@@ -311,7 +311,7 @@
 			color: "#22c55e"
 		},
 		totalPaid: {
-			label: "Total Reimbursement",
+			label: "Total Repayment",
 			color: "#f97316"
 		}
 	} satisfies Chart.ChartConfig;
@@ -342,6 +342,9 @@
 		const worstMonthlyRate = worstCaseReturn / 100 / 12;
 		const expectedMonthlyRate = investmentRate / 100 / 12;
 		const bestMonthlyRate = bestCaseReturn / 100 / 12;
+		
+		// Year 0: Initial state
+		data.push({ year: 0, worst: principal, expected: principal, best: principal });
 		
 		for (let year = 1; year <= analysisYears; year++) {
 			for (let month = 0; month < 12; month++) {
@@ -760,7 +763,7 @@
 				<div class="grid gap-4 lg:grid-cols-2">
 					<!-- Growth Chart (Left) -->
 					<div class="rounded-lg border bg-card p-6 shadow-sm">
-						<h3 class="mb-4 text-lg font-semibold">Investment vs Total Reimbursement</h3>
+						<h3 class="mb-4 text-lg font-semibold">Investment vs Total Repayment</h3>
 						<div class="relative">
 							<Chart.Container config={chartConfig} class="h-80 w-full overflow-hidden">
 								<AreaChart
@@ -869,11 +872,11 @@
 					</div>
 
 					<!-- Investment Analysis (Right) -->
-					<div class="rounded-lg border bg-card p-4 shadow-sm">
-						<h3 class="mb-3 text-base font-semibold">Volatility Scenarios</h3>
-						<p class="text-xs text-muted-foreground mb-4">Final investment value after {analysisYears} years based on ±1 standard deviation</p>
+					<div class="rounded-lg border bg-card p-4 shadow-sm flex flex-col">
+						<h3 class="mb-2 text-base font-semibold">Volatility Scenarios</h3>
+						<p class="text-xs text-muted-foreground mb-3">Investment value after {analysisYears} years based on ±1 standard deviation</p>
 						
-						<Chart.Container config={scenariosChartConfig} class="h-64 w-full overflow-hidden">
+						<Chart.Container config={scenariosChartConfig} class="flex-1 min-h-48 w-full overflow-hidden">
 							<AreaChart
 								legend
 								data={scenarioYearlyData}
