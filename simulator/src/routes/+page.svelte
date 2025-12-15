@@ -39,7 +39,7 @@
 		insuranceCost: number;
 		investmentRate: number;
 		investmentVolatility: number;
-		analysisYears: number;
+		additionalYears: number;
 	} = {
 		loanAmount: 200000,
 		interestRate: 4.5,
@@ -50,7 +50,7 @@
 		insuranceCost: 30,
 		investmentRate: 7.0,
 		investmentVolatility: 3,
-		analysisYears: 40,
+		additionalYears: 10,
 	};
 
 	// Investment presets
@@ -99,7 +99,7 @@
 	// Investment parameters
 	let investmentRate = DEFAULTS.investmentRate;
 	let investmentVolatility = DEFAULTS.investmentVolatility;
-	let analysisYears = DEFAULTS.analysisYears;
+	let additionalYears = DEFAULTS.additionalYears;
 
 	// Clamp values to respect min/max constraints
 	$: loanAmount = Math.max(0, Math.min(10000000, loanAmount));
@@ -110,7 +110,10 @@
 	$: insuranceCost = Math.max(0, Math.min(10000, insuranceCost));
 	$: investmentRate = Math.max(0, Math.min(30, investmentRate));
 	$: investmentVolatility = Math.max(0, Math.min(100, investmentVolatility));
-	$: analysisYears = Math.max(loanTermYears, Math.min(60, analysisYears));
+	$: additionalYears = Math.max(0, Math.min(30, additionalYears));
+	
+	// Total analysis period = loan term + additional years
+	$: analysisYears = loanTermYears + additionalYears;
 
 	// Risk level classification
 	$: riskLevel = investmentVolatility < 10 ? 'Low' : investmentVolatility < 20 ? 'Medium' : 'High';
@@ -370,7 +373,7 @@
 		insuranceCost = DEFAULTS.insuranceCost;
 		investmentRate = DEFAULTS.investmentRate;
 		investmentVolatility = DEFAULTS.investmentVolatility;
-		analysisYears = DEFAULTS.analysisYears;
+		additionalYears = DEFAULTS.additionalYears;
 		selectedPresetId = 'custom';
 	}
 </script>
@@ -641,22 +644,22 @@
 						<Tooltip.Root>
 							<Tooltip.Trigger>
 								{#snippet child({ props })}
-									<label {...props} for="analysis-years" class="text-sm font-medium cursor-help">Analysis Period (Years) ⓘ</label>
+									<label {...props} for="additional-years" class="text-sm font-medium cursor-help">Years After Loan Ends ⓘ</label>
 								{/snippet}
 							</Tooltip.Trigger>
 							<Tooltip.Content>
-								<p>Total time to simulate, including years after the loan ends</p>
+								<p>Additional years to simulate after the loan is paid off</p>
 							</Tooltip.Content>
 						</Tooltip.Root>
 						<Input
-							id="analysis-years"
+							id="additional-years"
 							type="number"
-							bind:value={analysisYears}
-							min={loanTermYears}
-							max="60"
+							bind:value={additionalYears}
+							min="0"
+							max="30"
 							step="1"
 						/>
-						<p class="text-xs text-muted-foreground">{analysisYears - loanTermYears} years after loan ends</p>
+						<p class="text-xs text-muted-foreground">Total analysis: {analysisYears} years ({loanTermYears} + {additionalYears})</p>
 					</div>
 				</div>
 			</Sidebar.Content>
