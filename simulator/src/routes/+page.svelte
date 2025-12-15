@@ -107,8 +107,9 @@
 				(Math.pow(1 + monthlyRate, numberOfPayments) - 1)
 			: 0;
 	$: totalPayment = monthlyPayment * numberOfPayments;
-	$: totalInterest = totalPayment - principal;
-	$: totalCost = totalPayment + downPayment;
+	// Total interest = payments during repayment - original principal + interest paid during partial deferral
+	$: totalInterest = totalPayment - principal + deferralInterestPaid;
+	$: totalCost = totalPayment + downPayment + deferralInterestPaid + totalInsuranceCost;
 	$: totalInsuranceCost = insuranceCost * totalLoanMonths;
 
 	// Investment calculations
@@ -472,18 +473,18 @@
 								<label for="deferral-type" class="text-sm font-medium">Deferral Type</label>
 								<Select.Root type="single" bind:value={deferralType}>
 									<Select.Trigger id="deferral-type" class="w-full">
-										{deferralType === 'complete' ? 'Complete (no payment)' : 'Partial (interest only)'}
+										{deferralType === 'complete' ? 'Complete (insurance only)' : 'Partial (interest + insurance)'}
 									</Select.Trigger>
 									<Select.Content>
-										<Select.Item value="complete">Complete (no payment)</Select.Item>
-										<Select.Item value="partial">Partial (interest only)</Select.Item>
+										<Select.Item value="complete">Complete (insurance only)</Select.Item>
+										<Select.Item value="partial">Partial (interest + insurance)</Select.Item>
 									</Select.Content>
 								</Select.Root>
 								<p class="text-xs text-muted-foreground">
 									{#if deferralType === 'complete'}
-										Interest capitalizes - no payments for {deferralMonths} months
+										Interest capitalizes · Pay {formatCurrency(insuranceCost)}/month insurance for {deferralMonths} months
 									{:else}
-										Interest-only payments of {selectedCurrency.symbol}{((loanAmount - downPayment) * monthlyRate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month
+										Pay {formatCurrency((loanAmount - downPayment) * monthlyRate + insuranceCost)}/month (interest + insurance) for {deferralMonths} months
 									{/if}
 								</p>
 							</div>
@@ -612,7 +613,7 @@
 									Loan Profitability Simulator
 								</h1>
 								<p class="text-muted-foreground">
-									Adjust the parameters in the sidebar to see how they affect your results.
+									Discover if your loan can work for you, not against you.
 								</p>
 							</div>
 							<!-- Currency Selector -->
