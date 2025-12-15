@@ -30,6 +30,7 @@
 	let loanTermYears = 30;
 	let downPayment = 1000;
 	let deferralMonths = 0; // Grace period before loan repayment starts
+	let deferralType: 'complete' | 'partial' = 'complete'; // complete = interest capitalizes, partial = interest paid monthly
 
 	// Investment parameters
 	let investmentRate = 7.0; // Expected annual return rate
@@ -51,14 +52,21 @@
 	$: riskColor = investmentVolatility < 10 ? 'text-green-600' : investmentVolatility < 20 ? 'text-yellow-600' : 'text-red-600';
 
 	// Reactive calculations
-	// During deferral, interest accrues and is added to principal (capitalized interest)
+	// For complete deferral: interest accrues and is added to principal (capitalized interest)
+	// For partial deferral: interest is paid monthly during deferral, principal stays the same
 	$: principalAfterDeferral = (() => {
 		let balance = loanAmount - downPayment;
-		for (let month = 0; month < deferralMonths; month++) {
-			balance *= (1 + monthlyRate);
+		if (deferralType === 'complete') {
+			// Interest capitalizes during deferral
+			for (let month = 0; month < deferralMonths; month++) {
+				balance *= (1 + monthlyRate);
+			}
 		}
+		// For partial deferral, balance stays the same (interest paid separately)
 		return balance;
 	})();
+	// Calculate total interest paid during partial deferral period
+	$: deferralInterestPaid = deferralType === 'partial' ? (loanAmount - downPayment) * monthlyRate * deferralMonths : 0;
 	$: principal = loanAmount - downPayment;
 	$: monthlyRate = interestRate / 100 / 12;
 	$: numberOfPayments = loanTermYears * 12;
@@ -106,9 +114,16 @@
 				investmentValue *= (1 + monthlyInvestmentRate);
 				
 				if (isDeferralMonth) {
-					// During deferral: interest accrues on loan balance (capitalized)
-					loanBalance *= (1 + monthlyRate);
-					// No payment, but we track what could have been invested
+					if (deferralType === 'complete') {
+						// Complete deferral: interest accrues on loan balance (capitalized)
+						loanBalance *= (1 + monthlyRate);
+						// No payment during deferral
+					} else {
+						// Partial deferral: only interest is paid monthly, principal stays the same
+						const interestOnly = loanBalance * monthlyRate;
+						investmentValue += interestOnly; // Track what could have been invested
+						totalPaid += interestOnly;
+					}
 				} else if (isRepaymentMonth) {
 					// During repayment: add monthly payment to investment (what you could have invested)
 					investmentValue += monthlyPayment;
@@ -213,6 +228,7 @@
 		loanTermYears = 30;
 		downPayment = 40000;
 		deferralMonths = 0;
+		deferralType = 'complete';
 		investmentRate = 7.0;
 		investmentVolatility = 15;
 		analysisYears = 40;
@@ -302,13 +318,29 @@
 							max="60"
 							step="1"
 						/>
-						<p class="text-xs text-muted-foreground">
-							{#if deferralMonths > 0}
-								Interest accrues for {deferralMonths} months before repayment
-							{:else}
-								No deferral - repayment starts immediately
-							{/if}
-						</p>
+						{#if deferralMonths > 0}
+							<div class="space-y-2">
+								<label for="deferral-type" class="text-sm font-medium">Deferral Type</label>
+								<Select.Root type="single" bind:value={deferralType}>
+									<Select.Trigger id="deferral-type" class="w-full">
+										{deferralType === 'complete' ? 'Complete (no payment)' : 'Partial (interest only)'}
+									</Select.Trigger>
+									<Select.Content>
+										<Select.Item value="complete">Complete (no payment)</Select.Item>
+										<Select.Item value="partial">Partial (interest only)</Select.Item>
+									</Select.Content>
+								</Select.Root>
+								<p class="text-xs text-muted-foreground">
+									{#if deferralType === 'complete'}
+										Interest capitalizes - no payments for {deferralMonths} months
+									{:else}
+										Interest-only payments of {selectedCurrency.symbol}{((loanAmount - downPayment) * monthlyRate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month
+									{/if}
+								</p>
+							</div>
+						{:else}
+							<p class="text-xs text-muted-foreground">No deferral - repayment starts immediately</p>
+						{/if}
 					</div>
 				</div>
 
