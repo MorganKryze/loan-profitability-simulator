@@ -376,7 +376,7 @@
 					<p class="text-lg font-semibold mt-1">{formatCurrency(principal)}</p>
 				</div>
 				<div class="rounded-lg border bg-card p-3 shadow-sm">
-					<p class="text-xs text-muted-foreground">Total Interest</p>
+					<p class="text-xs text-muted-foreground">Total Loan Interest</p>
 					<p class="text-lg font-semibold text-chart-1 mt-1">{formatCurrency(totalInterest)}</p>
 				</div>
 				<div class="rounded-lg border bg-card p-3 shadow-sm">
