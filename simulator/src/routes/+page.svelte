@@ -29,6 +29,7 @@
 	let interestRate = 4.5;
 	let loanTermYears = 30;
 	let downPayment = 1000;
+	let deferralMonths = 0; // Grace period before loan repayment starts
 
 	// Investment parameters
 	let investmentRate = 7.0; // Expected annual return rate
@@ -40,6 +41,7 @@
 	$: downPayment = Math.max(0, Math.min(loanAmount, downPayment));
 	$: interestRate = Math.max(0, Math.min(20, interestRate));
 	$: loanTermYears = Math.max(1, Math.min(40, loanTermYears));
+	$: deferralMonths = Math.max(0, Math.min(60, deferralMonths));
 	$: investmentRate = Math.max(0, Math.min(30, investmentRate));
 	$: investmentVolatility = Math.max(0, Math.min(100, investmentVolatility));
 	$: analysisYears = Math.max(loanTermYears, Math.min(60, analysisYears));
@@ -49,12 +51,20 @@
 	$: riskColor = investmentVolatility < 10 ? 'text-green-600' : investmentVolatility < 20 ? 'text-yellow-600' : 'text-red-600';
 
 	// Reactive calculations
+	// During deferral, interest accrues and is added to principal (capitalized interest)
+	$: principalAfterDeferral = (() => {
+		let balance = loanAmount - downPayment;
+		for (let month = 0; month < deferralMonths; month++) {
+			balance *= (1 + monthlyRate);
+		}
+		return balance;
+	})();
 	$: principal = loanAmount - downPayment;
 	$: monthlyRate = interestRate / 100 / 12;
 	$: numberOfPayments = loanTermYears * 12;
 	$: monthlyPayment =
-		principal > 0 && monthlyRate > 0
-			? (principal * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments))) /
+		principalAfterDeferral > 0 && monthlyRate > 0
+			? (principalAfterDeferral * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments))) /
 				(Math.pow(1 + monthlyRate, numberOfPayments) - 1)
 			: 0;
 	$: totalPayment = monthlyPayment * numberOfPayments;
@@ -70,7 +80,12 @@
 		totalPaid: number;
 		netPosition: number;
 		isLoanActive: boolean;
+		isDeferralPeriod: boolean;
 	};
+
+	// Total loan duration including deferral period
+	$: totalLoanMonths = deferralMonths + numberOfPayments;
+	$: totalLoanYears = Math.ceil(totalLoanMonths / 12);
 
 	$: yearlyData = (() => {
 		const data: YearlyData[] = [];
@@ -78,17 +93,24 @@
 		let loanBalance = principal;
 		let totalPaid = downPayment;
 		const monthlyInvestmentRate = investmentRate / 100 / 12;
+		let totalMonthsElapsed = 0;
 		
 		for (let year = 1; year <= analysisYears; year++) {
-			const isLoanActive = year <= loanTermYears;
-			
 			// Monthly calculations for the year
 			for (let month = 0; month < 12; month++) {
+				totalMonthsElapsed++;
+				const isDeferralMonth = totalMonthsElapsed <= deferralMonths;
+				const isRepaymentMonth = totalMonthsElapsed > deferralMonths && totalMonthsElapsed <= totalLoanMonths;
+				
 				// Investment grows with compound interest
 				investmentValue *= (1 + monthlyInvestmentRate);
 				
-				if (isLoanActive) {
-					// During loan: add monthly payment to investment (what you could have invested)
+				if (isDeferralMonth) {
+					// During deferral: interest accrues on loan balance (capitalized)
+					loanBalance *= (1 + monthlyRate);
+					// No payment, but we track what could have been invested
+				} else if (isRepaymentMonth) {
+					// During repayment: add monthly payment to investment (what you could have invested)
 					investmentValue += monthlyPayment;
 					totalPaid += monthlyPayment;
 					
@@ -99,13 +121,17 @@
 				}
 			}
 			
+			const isLoanActive = totalMonthsElapsed <= totalLoanMonths;
+			const isDeferralPeriod = totalMonthsElapsed <= deferralMonths;
+			
 			data.push({
 				year,
 				investmentValue,
 				loanBalance: isLoanActive ? loanBalance : 0,
 				totalPaid,
 				netPosition: investmentValue - totalPaid,
-				isLoanActive
+				isLoanActive,
+				isDeferralPeriod
 			});
 		}
 		return data;
@@ -178,7 +204,7 @@
 	$: netPositionLine = yearlyData.map(d => `${scaleX(d.year)},${scaleY(d.netPosition)}`).join(' ');
 	$: netPositionPolygon = `${scaleX(0)},${scaleY(0)} ${netPositionLine} ${scaleX(analysisYears)},${scaleY(0)}`;
 	$: zeroLineY = scaleY(0);
-	$: loanEndX = scaleX(loanTermYears);
+	$: loanEndX = scaleX(totalLoanYears);
 	$: lastYearData = yearlyData[yearlyData.length - 1];
 
 	function resetValues() {
@@ -186,6 +212,7 @@
 		interestRate = 4.5;
 		loanTermYears = 30;
 		downPayment = 40000;
+		deferralMonths = 0;
 		investmentRate = 7.0;
 		investmentVolatility = 15;
 		analysisYears = 40;
@@ -262,6 +289,26 @@
 							step="1"
 						/>
 						<p class="text-xs text-muted-foreground">{numberOfPayments} monthly payments</p>
+					</div>
+
+					<!-- Deferral Period -->
+					<div class="space-y-2">
+						<label for="deferral-months" class="text-sm font-medium">Deferral Period (Months)</label>
+						<Input
+							id="deferral-months"
+							type="number"
+							bind:value={deferralMonths}
+							min="0"
+							max="60"
+							step="1"
+						/>
+						<p class="text-xs text-muted-foreground">
+							{#if deferralMonths > 0}
+								Interest accrues for {deferralMonths} months before repayment
+							{:else}
+								No deferral - repayment starts immediately
+							{/if}
+						</p>
 					</div>
 				</div>
 
