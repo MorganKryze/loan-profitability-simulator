@@ -5,6 +5,10 @@
 	import * as Select from "$lib/components/ui/select";
 	import * as Tooltip from "$lib/components/ui/tooltip";
 	import * as Sidebar from "$lib/components/ui/sidebar";
+	import * as Chart from "$lib/components/ui/chart";
+	import { AreaChart } from "layerchart";
+	import { scaleLinear } from "d3-scale";
+	import { curveNatural } from "d3-shape";
 
 	// Currency configuration
 	type Currency = {
@@ -203,23 +207,23 @@
 		return value.toFixed(2) + "%";
 	}
 
-	// Chart calculations
-	const chartWidth = 100;
-	const chartHeight = 60;
-	
-	$: chartMaxValue = Math.max(...yearlyData.map(d => Math.max(d.investmentValue, d.totalPaid)));
-	$: chartMinValue = Math.min(...yearlyData.map(d => d.netPosition), 0);
-	$: chartValueRange = chartMaxValue - chartMinValue;
-	
-	$: scaleY = (value: number) => chartHeight - ((value - chartMinValue) / chartValueRange) * chartHeight;
-	$: scaleX = (year: number) => (year / analysisYears) * chartWidth;
-	
-	$: investmentLine = yearlyData.map(d => `${scaleX(d.year)},${scaleY(d.investmentValue)}`).join(' ');
-	$: totalPaidLine = yearlyData.map(d => `${scaleX(d.year)},${scaleY(d.totalPaid)}`).join(' ');
-	$: netPositionLine = yearlyData.map(d => `${scaleX(d.year)},${scaleY(d.netPosition)}`).join(' ');
-	$: netPositionPolygon = `${scaleX(0)},${scaleY(0)} ${netPositionLine} ${scaleX(analysisYears)},${scaleY(0)}`;
-	$: zeroLineY = scaleY(0);
-	$: loanEndX = scaleX(totalLoanYears);
+	// Chart config for shadcn/layerchart
+	const chartConfig = {
+		investmentValue: {
+			label: "Investment Value",
+			color: "#22c55e"
+		},
+		totalPaid: {
+			label: "Total Paid",
+			color: "#f97316"
+		},
+		netPosition: {
+			label: "Net Position",
+			color: "#3b82f6"
+		}
+	} satisfies Chart.ChartConfig;
+
+	// Keep lastYearData for metrics
 	$: lastYearData = yearlyData[yearlyData.length - 1];
 
 	function resetValues() {
@@ -490,7 +494,7 @@
 							<div class="flex items-center gap-2">
 								<span class="text-sm font-medium text-muted-foreground">Currency:</span>
 								<Select.Root type="single" bind:value={selectedCurrencyCode}>
-									<Select.Trigger class="w-[120px]">
+									<Select.Trigger class="w-30">
 										{selectedCurrency.symbol} {selectedCurrency.code}
 									</Select.Trigger>
 									<Select.Content>
@@ -559,124 +563,65 @@
 					<!-- Growth Chart (Left) -->
 					<div class="rounded-lg border bg-card p-6 shadow-sm">
 						<h3 class="mb-4 text-lg font-semibold">Growth Over Time</h3>
-						<div class="relative">
-							<svg viewBox="0 0 {chartWidth} {chartHeight + 10}" class="w-full h-64" preserveAspectRatio="xMidYMid meet">
-								<!-- Zero line -->
-								<line 
-									x1="0" 
-									y1={zeroLineY} 
-									x2={chartWidth} 
-									y2={zeroLineY} 
-									stroke="currentColor" 
-									stroke-opacity="0.2" 
-									stroke-dasharray="2,2"
-								/>
-								
-								<!-- Loan end marker -->
-								<line 
-									x1={loanEndX} 
-									y1="0" 
-									x2={loanEndX} 
-									y2={chartHeight} 
-									stroke="currentColor" 
-									stroke-opacity="0.3" 
-									stroke-dasharray="3,3"
-								/>
-								<text 
-									x={loanEndX} 
-									y={chartHeight + 8} 
-									font-size="3" 
-									text-anchor="middle" 
-									fill="currentColor" 
-									opacity="0.5"
-								>
-									Loan ends
-								</text>
-								
-								<!-- Total Paid line (orange) -->
-								<polyline
-									fill="none"
-									stroke="#f97316"
-									stroke-width="0.8"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									points={totalPaidLine}
-								/>
-								
-								<!-- Investment Value line (green) -->
-								<polyline
-									fill="none"
-									stroke="#22c55e"
-									stroke-width="0.8"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									points={investmentLine}
-								/>
-								
-								<!-- Net Position area fill -->
-								<polygon
-									fill={isPositiveROI ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)'}
-									points={netPositionPolygon}
-								/>
-								
-								<!-- Net Position line -->
-								<polyline
-									fill="none"
-									stroke={isPositiveROI ? '#22c55e' : '#ef4444'}
-									stroke-width="0.6"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-dasharray="2,1"
-									points={netPositionLine}
-								/>
-								
-								<!-- Break-even point marker -->
-								{#if breakEvenYear}
-									<circle 
-										cx={scaleX(breakEvenYear)} 
-										cy={zeroLineY} 
-										r="1.5" 
-										fill="#22c55e"
+						<Chart.Container config={chartConfig} class="h-80 w-full overflow-hidden">
+							<AreaChart
+								legend
+								data={yearlyData}
+								x="year"
+								xScale={scaleLinear()}
+								yPadding={[0, 25]}
+								padding={{ left: 50, right: 16, top: 16, bottom: 40 }}
+								series={[
+									{
+										key: "investmentValue",
+										label: chartConfig.investmentValue.label,
+										color: chartConfig.investmentValue.color,
+									},
+									{
+										key: "totalPaid",
+										label: chartConfig.totalPaid.label,
+										color: chartConfig.totalPaid.color,
+									},
+									{
+										key: "netPosition",
+										label: chartConfig.netPosition.label,
+										color: chartConfig.netPosition.color,
+									},
+								]}
+								props={{
+									area: {
+										curve: curveNatural,
+										"fill-opacity": 0.4,
+										line: { class: "stroke-1" },
+										motion: "tween",
+									},
+									xAxis: {
+										format: (v: number) => `Y${v}`,
+									},
+									yAxis: {
+										format: (v: number) => {
+											if (v >= 1000000) return `${(v / 1000000).toFixed(1)}M`;
+											if (v >= 1000) return `${(v / 1000).toFixed(0)}K`;
+											return v.toString();
+										},
+									},
+								}}
+							>
+								{#snippet tooltip()}
+									<Chart.Tooltip
+										labelFormatter={(v: number) => `Year ${v}`}
+										indicator="line"
 									/>
-								{/if}
-								
-								<!-- End point markers -->
-								<circle 
-									cx={scaleX(analysisYears)} 
-									cy={scaleY(lastYearData.investmentValue)} 
-									r="1.2" 
-									fill="#22c55e"
-								/>
-								<circle 
-									cx={scaleX(analysisYears)} 
-									cy={scaleY(lastYearData.totalPaid)} 
-									r="1.2" 
-									fill="#f97316"
-								/>
-							</svg>
-							
-							<!-- Legend -->
-							<div class="flex flex-wrap justify-center gap-4 mt-4 text-xs">
-								<div class="flex items-center gap-1.5">
-									<div class="w-3 h-0.5 bg-green-500 rounded"></div>
-									<span class="text-muted-foreground">Investment Value</span>
-								</div>
-								<div class="flex items-center gap-1.5">
-									<div class="w-3 h-0.5 bg-orange-500 rounded"></div>
-									<span class="text-muted-foreground">Total Paid</span>
-								</div>
-								<div class="flex items-center gap-1.5">
-									<div class="w-3 h-0.5 rounded" style="background: {isPositiveROI ? '#22c55e' : '#ef4444'}; opacity: 0.5;"></div>
-									<span class="text-muted-foreground">Net Position</span>
-								</div>
-								{#if breakEvenYear}
-									<div class="flex items-center gap-1.5">
-										<div class="w-2 h-2 bg-green-500 rounded-full"></div>
-										<span class="text-muted-foreground">Break-even (Year {breakEvenYear})</span>
-									</div>
-								{/if}
-							</div>
-						</div>
+								{/snippet}
+							</AreaChart>
+						</Chart.Container>
+						
+						{#if breakEvenYear}
+							<p class="text-xs text-muted-foreground mt-2 text-center">
+								<span class="inline-block w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+								Break-even at Year {breakEvenYear}
+							</p>
+						{/if}
 					</div>
 
 					<!-- Investment Analysis (Right) -->

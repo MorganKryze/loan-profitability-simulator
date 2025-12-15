@@ -25,6 +25,8 @@
 		"@tailwindcss/forms": "^0.5.10",
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.1.17",
+		"@types/d3-scale": "^4.0.9",
+		"@types/d3-shape": "^3.1.7",
 		"@types/node": "^24",
 		"bits-ui": "^2.14.4",
 		"clsx": "^2.1.1",
@@ -32,6 +34,7 @@
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.13.1",
 		"globals": "^16.5.0",
+		"layerchart": "2.0.0-next.43",
 		"prettier": "^3.7.4",
 		"prettier-plugin-svelte": "^3.4.0",
 		"prettier-plugin-tailwindcss": "^0.7.2",
@@ -44,5 +47,9 @@
 		"typescript": "^5.9.3",
 		"typescript-eslint": "^8.48.1",
 		"vite": "^7.2.6"
+	},
+	"dependencies": {
+		"d3-scale": "^4.0.2",
+		"d3-shape": "^3.2.0"
 	}
 }
