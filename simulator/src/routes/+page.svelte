@@ -391,38 +391,9 @@
 
 			<!-- Main Dashboard Grid -->
 			<div class="space-y-4">
-				<!-- Volatility Scenarios & Key Metrics -->
-				<div class="rounded-lg border bg-card p-4 shadow-sm">
-					<h3 class="mb-3 text-base font-semibold">Investment Analysis</h3>
-					
-					<!-- Volatility Scenarios -->
-					<h4 class="font-medium mb-3">Volatility Scenarios</h4>
-					<div class="space-y-3">
-						<div class="flex justify-between items-center p-3 rounded-lg bg-green-50 dark:bg-green-950/50">
-							<div>
-								<p class="text-sm font-medium text-green-700 dark:text-green-300">Best Case ({formatPercent(bestCaseReturn)})</p>
-								<p class="text-xs text-green-600 dark:text-green-400">+1 standard deviation</p>
-							</div>
-							<p class="text-lg font-semibold text-green-700 dark:text-green-300">{formatCurrency(bestCaseValue)}</p>
-						</div>
-						<div class="flex justify-between items-center p-3 rounded-lg bg-secondary/50">
-							<div>
-								<p class="text-sm font-medium">Expected ({formatPercent(investmentRate)})</p>
-									<p class="text-xs text-muted-foreground">Base scenario</p>
-								</div>
-								<p class="text-lg font-semibold">{formatCurrency(finalInvestmentValue)}</p>
-							</div>
-							<div class="flex justify-between items-center p-3 rounded-lg bg-red-50 dark:bg-red-950/50">
-								<div>
-									<p class="text-sm font-medium text-red-700 dark:text-red-300">Worst Case ({formatPercent(worstCaseReturn)})</p>
-									<p class="text-xs text-red-600 dark:text-red-400">-1 standard deviation</p>
-								</div>
-								<p class="text-lg font-semibold text-red-700 dark:text-red-300">{formatCurrency(worstCaseValue)}</p>
-							</div>
-						</div>
-					</div>
-
-					<!-- Growth Chart -->
+				<!-- Graph and Analysis Side by Side -->
+				<div class="grid gap-4 lg:grid-cols-2">
+					<!-- Growth Chart (Left) -->
 					<div class="rounded-lg border bg-card p-6 shadow-sm">
 						<h3 class="mb-4 text-lg font-semibold">Growth Over Time</h3>
 						<div class="relative">
@@ -545,7 +516,39 @@
 						</div>
 					</div>
 
-					<!-- Yearly Breakdown Table -->
+					<!-- Investment Analysis (Right) -->
+					<div class="rounded-lg border bg-card p-4 shadow-sm">
+						<h3 class="mb-3 text-base font-semibold">Investment Analysis</h3>
+						
+						<!-- Volatility Scenarios -->
+						<h4 class="font-medium mb-3">Volatility Scenarios</h4>
+						<div class="space-y-3">
+							<div class="flex justify-between items-center p-3 rounded-lg bg-green-50 dark:bg-green-950/50">
+								<div>
+									<p class="text-sm font-medium text-green-700 dark:text-green-300">Best Case ({formatPercent(bestCaseReturn)})</p>
+									<p class="text-xs text-green-600 dark:text-green-400">+1 standard deviation</p>
+								</div>
+								<p class="text-lg font-semibold text-green-700 dark:text-green-300">{formatCurrency(bestCaseValue)}</p>
+							</div>
+							<div class="flex justify-between items-center p-3 rounded-lg bg-secondary/50">
+								<div>
+									<p class="text-sm font-medium">Expected ({formatPercent(investmentRate)})</p>
+									<p class="text-xs text-muted-foreground">Base scenario</p>
+								</div>
+								<p class="text-lg font-semibold">{formatCurrency(finalInvestmentValue)}</p>
+							</div>
+							<div class="flex justify-between items-center p-3 rounded-lg bg-red-50 dark:bg-red-950/50">
+								<div>
+									<p class="text-sm font-medium text-red-700 dark:text-red-300">Worst Case ({formatPercent(worstCaseReturn)})</p>
+									<p class="text-xs text-red-600 dark:text-red-400">-1 standard deviation</p>
+								</div>
+								<p class="text-lg font-semibold text-red-700 dark:text-red-300">{formatCurrency(worstCaseValue)}</p>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Yearly Breakdown Table -->
 					<div class="rounded-lg border bg-card p-6 shadow-sm">
 						<h3 class="mb-4 text-lg font-semibold">Compound Growth Over Time</h3>
 						<div class="overflow-x-auto">
