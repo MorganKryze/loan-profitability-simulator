@@ -193,7 +193,7 @@
 	
 	// Volatility-adjusted returns (using simplified model)
 	$: bestCaseReturn = investmentRate + investmentVolatility;
-	$: worstCaseReturn = Math.max(0, investmentRate - investmentVolatility);
+	$: worstCaseReturn = investmentRate - investmentVolatility;
 	
 	// Calculate final values with volatility scenarios
 	$: scenarioCalculation = (rate: number) => {
