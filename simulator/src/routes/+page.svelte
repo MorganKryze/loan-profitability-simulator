@@ -36,6 +36,7 @@
 		downPayment: number;
 		deferralMonths: number;
 		deferralType: 'complete' | 'partial';
+		insuranceCost: number;
 		investmentRate: number;
 		investmentVolatility: number;
 		analysisYears: number;
@@ -46,6 +47,7 @@
 		downPayment: 40000,
 		deferralMonths: 12,
 		deferralType: 'complete',
+		insuranceCost: 30,
 		investmentRate: 7.0,
 		investmentVolatility: 3,
 		analysisYears: 40,
@@ -58,6 +60,7 @@
 	let downPayment = DEFAULTS.downPayment;
 	let deferralMonths = DEFAULTS.deferralMonths;
 	let deferralType: 'complete' | 'partial' = DEFAULTS.deferralType;
+	let insuranceCost = DEFAULTS.insuranceCost;
 
 	// Investment parameters
 	let investmentRate = DEFAULTS.investmentRate;
@@ -70,6 +73,7 @@
 	$: interestRate = Math.max(0, Math.min(20, interestRate));
 	$: loanTermYears = Math.max(1, Math.min(40, loanTermYears));
 	$: deferralMonths = Math.max(0, Math.min(60, deferralMonths));
+	$: insuranceCost = Math.max(0, Math.min(10000, insuranceCost));
 	$: investmentRate = Math.max(0, Math.min(30, investmentRate));
 	$: investmentVolatility = Math.max(0, Math.min(100, investmentVolatility));
 	$: analysisYears = Math.max(loanTermYears, Math.min(60, analysisYears));
@@ -105,6 +109,7 @@
 	$: totalPayment = monthlyPayment * numberOfPayments;
 	$: totalInterest = totalPayment - principal;
 	$: totalCost = totalPayment + downPayment;
+	$: totalInsuranceCost = insuranceCost * totalLoanMonths;
 
 	// Investment calculations
 	// Calculate year-by-year investment growth with compound interest
@@ -136,23 +141,31 @@
 				totalMonthsElapsed++;
 				const isDeferralMonth = totalMonthsElapsed <= deferralMonths;
 				const isRepaymentMonth = totalMonthsElapsed > deferralMonths && totalMonthsElapsed <= totalLoanMonths;
+				const isLoanActiveMonth = totalMonthsElapsed <= totalLoanMonths;
 				
 				// Investment grows with compound interest
 				investmentValue *= (1 + monthlyInvestmentRate);
+				
+				// Insurance is paid every month during the loan term (including deferral)
+				// Add insurance to investment (what you could invest instead of paying insurance)
+				if (isLoanActiveMonth) {
+					investmentValue += insuranceCost;
+					totalPaid += insuranceCost;
+				}
 				
 				if (isDeferralMonth) {
 					if (deferralType === 'complete') {
 						// Complete deferral: interest accrues on loan balance (capitalized)
 						loanBalance *= (1 + monthlyRate);
-						// No payment during deferral
+						// No payment during deferral (except insurance)
 					} else {
 						// Partial deferral: only interest is paid monthly, principal stays the same
 						const interestOnly = loanBalance * monthlyRate;
-						investmentValue += interestOnly; // Track what could have been invested
+						investmentValue += interestOnly;
 						totalPaid += interestOnly;
 					}
 				} else if (isRepaymentMonth) {
-					// During repayment: add monthly payment to investment (what you could have invested)
+					// During repayment: add monthly payment to investment (what you could invest instead)
 					investmentValue += monthlyPayment;
 					totalPaid += monthlyPayment;
 					
@@ -199,11 +212,19 @@
 	$: scenarioCalculation = (rate: number) => {
 		let value = downPayment;
 		const monthlyRate = rate / 100 / 12;
+		let monthsElapsed = 0;
 		for (let year = 1; year <= analysisYears; year++) {
 			for (let month = 0; month < 12; month++) {
+				monthsElapsed++;
 				value *= (1 + monthlyRate);
-				if (year <= loanTermYears) {
+				// Add payments that could have been invested instead
+				if (monthsElapsed <= totalLoanMonths) {
+					value += insuranceCost;
+				}
+				if (monthsElapsed > deferralMonths && monthsElapsed <= totalLoanMonths) {
 					value += monthlyPayment;
+				} else if (monthsElapsed <= deferralMonths && deferralType === 'partial') {
+					value += principal * (interestRate / 100 / 12);
 				}
 			}
 		}
@@ -271,16 +292,29 @@
 		const worstMonthlyRate = worstCaseReturn / 100 / 12;
 		const expectedMonthlyRate = investmentRate / 100 / 12;
 		const bestMonthlyRate = bestCaseReturn / 100 / 12;
+		let monthsElapsed = 0;
 		
 		for (let year = 1; year <= analysisYears; year++) {
 			for (let month = 0; month < 12; month++) {
+				monthsElapsed++;
 				worstValue *= (1 + worstMonthlyRate);
 				expectedValue *= (1 + expectedMonthlyRate);
 				bestValue *= (1 + bestMonthlyRate);
-				if (year <= loanTermYears) {
+				// Add payments that could have been invested instead
+				if (monthsElapsed <= totalLoanMonths) {
+					worstValue += insuranceCost;
+					expectedValue += insuranceCost;
+					bestValue += insuranceCost;
+				}
+				if (monthsElapsed > deferralMonths && monthsElapsed <= totalLoanMonths) {
 					worstValue += monthlyPayment;
 					expectedValue += monthlyPayment;
 					bestValue += monthlyPayment;
+				} else if (monthsElapsed <= deferralMonths && deferralType === 'partial') {
+					const interestOnly = principal * (interestRate / 100 / 12);
+					worstValue += interestOnly;
+					expectedValue += interestOnly;
+					bestValue += interestOnly;
 				}
 			}
 			data.push({ year, worst: worstValue, expected: expectedValue, best: bestValue });
@@ -298,6 +332,7 @@
 		downPayment = DEFAULTS.downPayment;
 		deferralMonths = DEFAULTS.deferralMonths;
 		deferralType = DEFAULTS.deferralType;
+		insuranceCost = DEFAULTS.insuranceCost;
 		investmentRate = DEFAULTS.investmentRate;
 		investmentVolatility = DEFAULTS.investmentVolatility;
 		analysisYears = DEFAULTS.analysisYears;
@@ -456,6 +491,31 @@
 							<p class="text-xs text-muted-foreground">No deferral - repayment starts immediately</p>
 						{/if}
 					</div>
+
+					<!-- Insurance Cost -->
+					<div class="space-y-2">
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								{#snippet child({ props })}
+									<label {...props} for="insurance-cost" class="text-sm font-medium cursor-help">Monthly Insurance Cost ⓘ</label>
+								{/snippet}
+							</Tooltip.Trigger>
+							<Tooltip.Content>
+								<p>Fixed monthly insurance premium paid during the loan term</p>
+							</Tooltip.Content>
+						</Tooltip.Root>
+						<Input
+							id="insurance-cost"
+							type="number"
+							bind:value={insuranceCost}
+							min="0"
+							max="10000"
+							step="10"
+						/>
+						<p class="text-xs text-muted-foreground">
+							{formatCurrency(insuranceCost)}/month · Total: {formatCurrency(totalInsuranceCost)}
+						</p>
+					</div>
 				</div>
 
 				<Separator />
@@ -602,7 +662,7 @@
 			</div>
 
 			<!-- Second Row: Summary Cards -->
-			<div class="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-4">
+			<div class="grid gap-3 grid-cols-2 lg:grid-cols-5 mb-4">
 				<div class="rounded-lg border bg-card p-3 shadow-sm">
 					<p class="text-xs text-muted-foreground">Principal</p>
 					<p class="text-lg font-semibold mt-1">{formatCurrency(principal)}</p>
@@ -610,6 +670,10 @@
 				<div class="rounded-lg border bg-card p-3 shadow-sm">
 					<p class="text-xs text-muted-foreground">Total Loan Interest</p>
 					<p class="text-lg font-semibold text-chart-1 mt-1">{formatCurrency(totalInterest)}</p>
+				</div>
+				<div class="rounded-lg border bg-card p-3 shadow-sm">
+					<p class="text-xs text-muted-foreground">Total Insurance Cost</p>
+					<p class="text-lg font-semibold text-chart-1 mt-1">{formatCurrency(totalInsuranceCost)}</p>
 				</div>
 				<div class="rounded-lg border bg-card p-3 shadow-sm">
 					<p class="text-xs text-muted-foreground">Investment Value</p>
