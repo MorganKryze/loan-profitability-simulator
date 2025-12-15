@@ -106,7 +106,8 @@
 	$: downPayment = Math.max(0, Math.min(loanAmount, downPayment));
 	$: interestRate = Math.max(0, Math.min(20, interestRate));
 	$: loanTermYears = Math.max(1, Math.min(40, loanTermYears));
-	$: deferralMonths = Math.max(0, Math.min(60, deferralMonths));
+	// Deferral cannot exceed loan term minus 1 month (need at least 1 payment)
+	$: deferralMonths = Math.max(0, Math.min(loanTermYears * 12 - 1, deferralMonths));
 	$: insuranceCost = Math.max(0, Math.min(10000, insuranceCost));
 	$: investmentRate = Math.max(0, Math.min(30, investmentRate));
 	$: investmentVolatility = Math.max(0, Math.min(100, investmentVolatility));
@@ -137,7 +138,9 @@
 	$: deferralInterestPaid = deferralType === 'partial' ? (loanAmount - downPayment) * monthlyRate * deferralMonths : 0;
 	$: principal = loanAmount - downPayment;
 	$: monthlyRate = interestRate / 100 / 12;
-	$: numberOfPayments = loanTermYears * 12;
+	// Deferral is part of the loan term, so repayment period = loan term - deferral
+	$: totalLoanMonths = loanTermYears * 12;
+	$: numberOfPayments = Math.max(1, totalLoanMonths - deferralMonths);
 	$: monthlyPayment =
 		principalAfterDeferral > 0 && monthlyRate > 0
 			? (principalAfterDeferral * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments))) /
@@ -154,15 +157,16 @@
 	type YearlyData = {
 		year: number;
 		investmentValue: number;
+		interestEarned: number; // Investment gains above principal
 		loanBalance: number;
 		totalPaid: number;
+		totalBorrowingCost: number; // Cumulative interest + insurance paid
 		netPosition: number;
 		isLoanActive: boolean;
 		isDeferralPeriod: boolean;
 	};
 
-	// Total loan duration including deferral period
-	$: totalLoanMonths = deferralMonths + numberOfPayments;
+	// Total loan duration
 	$: totalLoanYears = Math.ceil(totalLoanMonths / 12);
 
 	$: yearlyData = (() => {
@@ -171,9 +175,23 @@
 		// Investment starts with the borrowed amount (principal)
 		let investmentValue = principal;
 		let loanBalance = principal;
-		let totalPaid = 0; // Track all payments made
+		let totalPaid = 0; // Track all payments made (principal + interest + insurance)
+		let totalBorrowingCost = 0; // Track only the cost of borrowing (interest + insurance)
 		const monthlyInvestmentRate = investmentRate / 100 / 12;
 		let totalMonthsElapsed = 0;
+		
+		// Year 0: Initial state - loan taken, principal invested, no payments yet
+		data.push({
+			year: 0,
+			investmentValue: principal,
+			interestEarned: 0,
+			loanBalance: principal,
+			totalPaid: 0,
+			totalBorrowingCost: 0,
+			netPosition: principal,
+			isLoanActive: true,
+			isDeferralPeriod: deferralMonths > 0
+		});
 		
 		for (let year = 1; year <= analysisYears; year++) {
 			// Monthly calculations for the year
@@ -189,6 +207,7 @@
 				// Insurance is paid every month during the loan term (including deferral)
 				if (isLoanActiveMonth) {
 					totalPaid += insuranceCost;
+					totalBorrowingCost += insuranceCost;
 				}
 				
 				if (isDeferralMonth) {
@@ -200,26 +219,31 @@
 						// Partial deferral: only interest is paid monthly, principal stays the same
 						const interestOnly = loanBalance * monthlyRate;
 						totalPaid += interestOnly;
+						totalBorrowingCost += interestOnly;
 					}
 				} else if (isRepaymentMonth) {
 					// During repayment: pay monthly payment
 					totalPaid += monthlyPayment;
 					
-					// Calculate remaining loan balance
+					// Calculate remaining loan balance and interest portion
 					const interestPayment = loanBalance * monthlyRate;
 					const principalPayment = monthlyPayment - interestPayment;
 					loanBalance = Math.max(0, loanBalance - principalPayment);
+					totalBorrowingCost += interestPayment; // Only the interest portion is a cost
 				}
 			}
 			
 			const isLoanActive = totalMonthsElapsed <= totalLoanMonths;
 			const isDeferralPeriod = totalMonthsElapsed <= deferralMonths;
+			const interestEarned = investmentValue - principal;
 			
 			data.push({
 				year,
 				investmentValue,
+				interestEarned,
 				loanBalance: isLoanActive ? loanBalance : 0,
 				totalPaid,
+				totalBorrowingCost,
 				netPosition: investmentValue - totalPaid,
 				isLoanActive,
 				isDeferralPeriod
@@ -230,15 +254,18 @@
 
 	// Key metrics
 	$: finalInvestmentValue = yearlyData.length > 0 ? yearlyData[yearlyData.length - 1].investmentValue : 0;
+	$: finalInterestEarned = yearlyData.length > 0 ? yearlyData[yearlyData.length - 1].interestEarned : 0;
+	$: finalBorrowingCost = yearlyData.length > 0 ? yearlyData[yearlyData.length - 1].totalBorrowingCost : 0;
 	$: finalNetPosition = yearlyData.length > 0 ? yearlyData[yearlyData.length - 1].netPosition : 0;
-	$: isPositiveROI = finalNetPosition > 0;
-	// Break-even: year when investment returns compensate for total interest paid
-	// Investment returns = investmentValue - totalPaid (what you put in)
-	// This should equal or exceed totalInterest (the cost of borrowing)
-	$: breakEvenYear = yearlyData.findIndex(d => {
-		const investmentReturns = d.investmentValue - d.totalPaid;
-		return investmentReturns >= totalInterest;
-	}) + 1 || null;
+	// Total borrowing cost at loan end (interest + insurance for the entire loan)
+	$: totalLoanBorrowingCost = totalInterest + totalInsuranceCost;
+	$: isPositiveROI = finalInterestEarned > totalLoanBorrowingCost;
+	// Break-even: year when investment interest earned exceeds the FINAL total borrowing cost
+	// This is when your investment gains cover ALL the costs of the loan
+	$: breakEvenYear = (() => {
+		const found = yearlyData.find(d => d.interestEarned >= totalLoanBorrowingCost);
+		return found ? found.year : null;
+	})();
 	
 	// Volatility-adjusted returns (using simplified model)
 	$: bestCaseReturn = investmentRate + investmentVolatility;
@@ -284,12 +311,8 @@
 			color: "#22c55e"
 		},
 		totalPaid: {
-			label: "Total Paid",
+			label: "Total Reimbursement",
 			color: "#f97316"
-		},
-		netPosition: {
-			label: "Net Position",
-			color: "#3b82f6"
 		}
 	} satisfies Chart.ChartConfig;
 
@@ -454,7 +477,13 @@
 							max="40"
 							step="1"
 						/>
-						<p class="text-xs text-muted-foreground">{numberOfPayments} monthly payments</p>
+						<p class="text-xs text-muted-foreground">
+							{#if deferralMonths > 0}
+								{deferralMonths} months deferral + {numberOfPayments} payments
+							{:else}
+								{numberOfPayments} monthly payments
+							{/if}
+						</p>
 					</div>
 
 					<!-- Deferral Period -->
@@ -466,7 +495,7 @@
 								{/snippet}
 							</Tooltip.Trigger>
 							<Tooltip.Content>
-								<p>Grace period before loan repayment begins</p>
+								<p>Grace period before loan repayment begins (included in loan term)</p>
 							</Tooltip.Content>
 						</Tooltip.Root>
 						<Input
@@ -474,7 +503,7 @@
 							type="number"
 							bind:value={deferralMonths}
 							min="0"
-							max="60"
+							max={loanTermYears * 12 - 1}
 							step="1"
 						/>
 						{#if deferralMonths > 0}
@@ -690,13 +719,13 @@
 				<div class="sm:col-span-2 lg:col-span-3 rounded-lg border p-6 shadow-sm {isPositiveROI ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800'}">
 					<p class="text-sm font-medium text-muted-foreground flex items-center gap-2">
 						{isPositiveROI ? '📈' : '📉'}
-						{isPositiveROI ? 'Positive ROI' : 'Negative ROI'}
+						{isPositiveROI ? 'Profitable Strategy' : 'Unprofitable Strategy'}
 					</p>
 					<p class="text-4xl font-bold tracking-tight mt-2 {isPositiveROI ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}">
-						{formatCurrency(finalNetPosition)}
+						{formatCurrency(finalInterestEarned - totalLoanBorrowingCost)}
 					</p>
 					<p class="text-xs text-muted-foreground mt-1">
-						After {analysisYears} years{#if breakEvenYear} · Break-even: Year {breakEvenYear}{/if}
+						Gains: {formatCurrency(finalInterestEarned)} − Loan cost: {formatCurrency(totalLoanBorrowingCost)}{#if breakEvenYear} · Break-even: Year {breakEvenYear}{/if}
 					</p>
 				</div>
 			</div>
@@ -731,66 +760,112 @@
 				<div class="grid gap-4 lg:grid-cols-2">
 					<!-- Growth Chart (Left) -->
 					<div class="rounded-lg border bg-card p-6 shadow-sm">
-						<h3 class="mb-4 text-lg font-semibold">Growth Over Time</h3>
-						<Chart.Container config={chartConfig} class="h-80 w-full overflow-hidden">
-							<AreaChart
-								legend
-								data={yearlyData}
-								x="year"
-								xScale={scaleLinear()}
-								yPadding={[0, 25]}
-								padding={{ left: 50, right: 16, top: 16, bottom: 40 }}
-								series={[
-									{
-										key: "investmentValue",
-										label: chartConfig.investmentValue.label,
-										color: chartConfig.investmentValue.color,
-									},
-									{
-										key: "totalPaid",
-										label: chartConfig.totalPaid.label,
-										color: chartConfig.totalPaid.color,
-									},
-									{
-										key: "netPosition",
-										label: chartConfig.netPosition.label,
-										color: chartConfig.netPosition.color,
-									},
-								]}
-								props={{
-									area: {
-										curve: curveNatural,
-										"fill-opacity": 0.4,
-										line: { class: "stroke-1" },
-										motion: "tween",
-									},
-									xAxis: {
-										format: (v: number) => `Y${v}`,
-									},
-									yAxis: {
-										format: (v: number) => {
-											if (v >= 1000000) return `${(v / 1000000).toFixed(1)}M`;
-											if (v >= 1000) return `${(v / 1000).toFixed(0)}K`;
-											return v.toString();
+						<h3 class="mb-4 text-lg font-semibold">Investment vs Total Reimbursement</h3>
+						<div class="relative">
+							<Chart.Container config={chartConfig} class="h-80 w-full overflow-hidden">
+								<AreaChart
+									legend
+									data={yearlyData}
+									x="year"
+									xScale={scaleLinear()}
+									yPadding={[0, 25]}
+									padding={{ left: 50, right: 16, top: 16, bottom: 40 }}
+									series={[
+										{
+											key: "investmentValue",
+											label: chartConfig.investmentValue.label,
+											color: chartConfig.investmentValue.color,
 										},
-									},
-								}}
-							>
-								{#snippet tooltip()}
-									<Chart.Tooltip
-										labelFormatter={(v: number) => `Year ${v}`}
-										indicator="line"
-									/>
-								{/snippet}
-							</AreaChart>
-						</Chart.Container>
+										{
+											key: "totalPaid",
+											label: chartConfig.totalPaid.label,
+											color: chartConfig.totalPaid.color,
+										},
+									]}
+									props={{
+										area: {
+											curve: curveNatural,
+											"fill-opacity": 0.4,
+											line: { class: "stroke-2" },
+											motion: "tween",
+										},
+										xAxis: {
+											format: (v: number) => `Y${v}`,
+										},
+										yAxis: {
+											format: (v: number) => {
+												if (v >= 1000000) return `${(v / 1000000).toFixed(1)}M`;
+												if (v >= 1000) return `${(v / 1000).toFixed(0)}K`;
+												return v.toString();
+											},
+										},
+									}}
+								>
+									{#snippet tooltip()}
+										<Chart.Tooltip
+											labelFormatter={(v: number) => `Year ${v}`}
+											indicator="line"
+										/>
+									{/snippet}
+								</AreaChart>
+							</Chart.Container>
+							
+							<!-- Vertical markers overlay -->
+							<div class="absolute inset-0 pointer-events-none" style="left: 50px; right: 16px; top: 16px; bottom: 40px;">
+								<!-- Loan ends marker -->
+								<div 
+									class="absolute top-0 bottom-0 w-0.5 bg-primary/60" 
+									style="left: {(totalLoanYears / analysisYears) * 100}%"
+								>
+									<div class="absolute -top-1 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] px-1 rounded whitespace-nowrap">
+										Loan ends
+									</div>
+								</div>
+								
+								<!-- Break-even marker -->
+								{#if breakEvenYear}
+									<div 
+										class="absolute top-0 bottom-0 w-0.5 bg-green-500/60" 
+										style="left: {(breakEvenYear / analysisYears) * 100}%"
+									>
+										<div class="absolute -top-1 left-1/2 -translate-x-1/2 bg-green-500 text-white text-[10px] px-1 rounded whitespace-nowrap">
+											Break-even
+										</div>
+									</div>
+								{/if}
+							</div>
+						</div>
 						
-						{#if breakEvenYear}
-							<p class="text-xs text-muted-foreground mt-2 text-center">
-								<span class="inline-block w-2 h-2 bg-green-500 rounded-full mr-1"></span>
-								Break-even at Year {breakEvenYear}
-							</p>
-						{/if}
+						<!-- Chart legend -->
+						<div class="flex flex-wrap gap-4 mt-3 text-xs text-muted-foreground justify-center">
+							<div class="flex items-center gap-1">
+								<span class="inline-block w-3 h-0.5 bg-primary"></span>
+								<span>Loan ends: Year {totalLoanYears}</span>
+							</div>
+							{#if breakEvenYear}
+								<div class="flex items-center gap-1">
+									<span class="inline-block w-3 h-0.5 bg-green-500"></span>
+									<span>Break-even: Year {breakEvenYear} (gains ≥ {formatCurrency(totalLoanBorrowingCost)})</span>
+								</div>
+							{:else}
+								<div class="flex items-center gap-1">
+									<span class="inline-block w-2 h-2 bg-red-500 rounded-full"></span>
+									<span>No break-even within {analysisYears} years (need {formatCurrency(totalLoanBorrowingCost)})</span>
+								</div>
+							{/if}
+						</div>
+						
+						<!-- Summary stats -->
+						<div class="grid grid-cols-2 gap-2 mt-4 text-xs">
+							<div class="p-2 rounded bg-green-50 dark:bg-green-950/50 text-center">
+								<p class="text-muted-foreground">Investment Gains</p>
+								<p class="font-semibold text-green-700 dark:text-green-300">{formatCurrency(finalInterestEarned)}</p>
+							</div>
+							<div class="p-2 rounded bg-orange-50 dark:bg-orange-950/50 text-center">
+								<p class="text-muted-foreground">Total Loan Cost</p>
+								<p class="font-semibold text-orange-700 dark:text-orange-300">{formatCurrency(totalLoanBorrowingCost)}</p>
+							</div>
+						</div>
 					</div>
 
 					<!-- Investment Analysis (Right) -->
@@ -859,61 +934,47 @@
 
 				<!-- Yearly Breakdown Table -->
 					<div class="rounded-lg border bg-card p-6 shadow-sm">
-						<h3 class="mb-4 text-lg font-semibold">Compound Growth Over Time</h3>
+						<h3 class="mb-4 text-lg font-semibold">Profitability Over Time</h3>
+						<p class="text-xs text-muted-foreground mb-3">Break-even when Investment Gains ≥ Total Loan Cost ({formatCurrency(totalLoanBorrowingCost)})</p>
 						<div class="overflow-x-auto max-h-96 overflow-y-auto">
 							<table class="w-full text-sm">
 								<thead class="sticky top-0 bg-card">
 									<tr class="border-b">
 										<th class="text-left py-2 px-2">Year</th>
 										<th class="text-right py-2 px-2">Investment Value</th>
+										<th class="text-right py-2 px-2">Investment Gains</th>
 										<th class="text-right py-2 px-2">Total Paid</th>
-										<th class="text-right py-2 px-2">Net Position</th>
-										<th class="text-right py-2 px-2">YoY Growth</th>
-										<th class="text-right py-2 px-2">Total Growth</th>
+										<th class="text-right py-2 px-2">vs Loan Cost</th>
 										<th class="text-center py-2 px-2">Status</th>
 									</tr>
 								</thead>
 								<tbody>
 									{#each yearlyData as data, i}
-										{@const prevData = i > 0 ? yearlyData[i - 1] : null}
-										{@const firstData = yearlyData[0]}
-										{@const yoyGrowth = prevData ? ((data.investmentValue - prevData.investmentValue) / prevData.investmentValue) * 100 : 0}
-										{@const totalGrowth = firstData ? ((data.investmentValue - firstData.investmentValue) / firstData.investmentValue) * 100 : 0}
-										<tr class="border-b border-border/50 {data.year === loanTermYears ? 'bg-primary/5' : ''}">
+										{@const isBreakEven = breakEvenYear === data.year}
+										{@const vsLoanCost = data.interestEarned - totalLoanBorrowingCost}
+										<tr class="border-b border-border/50 {data.year === totalLoanYears ? 'bg-primary/5' : ''} {isBreakEven ? 'bg-green-100 dark:bg-green-900/30' : ''}">
 											<td class="py-2 px-2 font-medium">
 												{data.year}
-												{#if data.year === loanTermYears}
-													<span class="text-xs text-primary ml-1">(loan ends)</span>
+												{#if data.year === totalLoanYears}
+													<span class="text-xs text-primary ml-1">📋 loan ends</span>
+												{/if}
+												{#if isBreakEven}
+													<span class="text-xs text-green-600 ml-1">✓ break-even</span>
 												{/if}
 											</td>
 											<td class="text-right py-2 px-2">{formatCurrency(data.investmentValue)}</td>
-											<td class="text-right py-2 px-2">{formatCurrency(data.totalPaid)}</td>
-											<td class="text-right py-2 px-2 {data.netPosition >= 0 ? 'text-green-600' : 'text-red-600'}">
-												{formatCurrency(data.netPosition)}
-											</td>
-											<td class="text-right py-2 px-2 text-muted-foreground">
-												{#if i === 0}
-													—
-												{:else}
-													<span class="{yoyGrowth >= 0 ? 'text-green-600' : 'text-red-600'}">
-														{yoyGrowth >= 0 ? '+' : ''}{yoyGrowth.toFixed(1)}%
-													</span>
-												{/if}
-											</td>
-											<td class="text-right py-2 px-2 text-muted-foreground">
-												{#if i === 0}
-													—
-												{:else}
-													<span class="{totalGrowth >= 0 ? 'text-green-600' : 'text-red-600'}">
-														{totalGrowth >= 0 ? '+' : ''}{totalGrowth.toFixed(1)}%
-													</span>
-												{/if}
+											<td class="text-right py-2 px-2 text-green-600">{formatCurrency(data.interestEarned)}</td>
+											<td class="text-right py-2 px-2 text-orange-600">{formatCurrency(data.totalPaid)}</td>
+											<td class="text-right py-2 px-2 font-medium {vsLoanCost >= 0 ? 'text-green-600' : 'text-red-600'}">
+												{vsLoanCost >= 0 ? '+' : ''}{formatCurrency(vsLoanCost)}
 											</td>
 											<td class="text-center py-2 px-2">
 												{#if data.isLoanActive}
-													<span class="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Paying</span>
+													<span class="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Repaying</span>
+												{:else if vsLoanCost >= 0}
+													<span class="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Profitable</span>
 												{:else}
-													<span class="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Growing</span>
+													<span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Not yet</span>
 												{/if}
 											</td>
 										</tr>
@@ -922,7 +983,7 @@
 							</table>
 						</div>
 						<p class="text-xs text-muted-foreground mt-3">
-							Showing all {analysisYears} years · YoY = year-over-year growth · Total = growth since year 1
+							vs Loan Cost = Investment Gains − Total Loan Cost (interest + insurance: {formatCurrency(totalLoanBorrowingCost)})
 						</p>
 					</div>
 				</div>
