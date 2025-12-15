@@ -417,16 +417,18 @@
 							<!-- Currency Selector -->
 							<div class="flex items-center gap-2">
 								<span class="text-sm font-medium text-muted-foreground">Currency:</span>
-								<select 
-									bind:value={selectedCurrencyCode}
-									class="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-								>
-									{#each currencies as currency}
-										<option value={currency.code}>
-											{currency.symbol} {currency.code}
-										</option>
-									{/each}
-								</select>
+								<Select.Root type="single" bind:value={selectedCurrencyCode}>
+									<Select.Trigger class="w-[120px]">
+										{selectedCurrency.symbol} {selectedCurrency.code}
+									</Select.Trigger>
+									<Select.Content>
+										{#each currencies as currency}
+											<Select.Item value={currency.code}>
+												{currency.symbol} {currency.code}
+											</Select.Item>
+										{/each}
+									</Select.Content>
+								</Select.Root>
 							</div>
 						</div>
 					</div>
