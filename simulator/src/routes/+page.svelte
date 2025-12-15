@@ -28,18 +28,41 @@
 	
 	$: selectedCurrency = currencies.find(c => c.code === selectedCurrencyCode) || currencies[0];
 
+	// Default values (immutable)
+	const DEFAULTS: {
+		loanAmount: number;
+		interestRate: number;
+		loanTermYears: number;
+		downPayment: number;
+		deferralMonths: number;
+		deferralType: 'complete' | 'partial';
+		investmentRate: number;
+		investmentVolatility: number;
+		analysisYears: number;
+	} = {
+		loanAmount: 200000,
+		interestRate: 4.5,
+		loanTermYears: 30,
+		downPayment: 40000,
+		deferralMonths: 12,
+		deferralType: 'complete',
+		investmentRate: 7.0,
+		investmentVolatility: 3,
+		analysisYears: 40,
+	};
+
 	// Input values
-	let loanAmount = 20000;
-	let interestRate = 4.5;
-	let loanTermYears = 30;
-	let downPayment = 1000;
-	let deferralMonths = 0; // Grace period before loan repayment starts
-	let deferralType: 'complete' | 'partial' = 'complete'; // complete = interest capitalizes, partial = interest paid monthly
+	let loanAmount = DEFAULTS.loanAmount;
+	let interestRate = DEFAULTS.interestRate;
+	let loanTermYears = DEFAULTS.loanTermYears;
+	let downPayment = DEFAULTS.downPayment;
+	let deferralMonths = DEFAULTS.deferralMonths;
+	let deferralType: 'complete' | 'partial' = DEFAULTS.deferralType;
 
 	// Investment parameters
-	let investmentRate = 7.0; // Expected annual return rate
-	let investmentVolatility = 15; // Standard deviation (risk measure)
-	let analysisYears = 40; // Total years to analyze (including post-loan)
+	let investmentRate = DEFAULTS.investmentRate;
+	let investmentVolatility = DEFAULTS.investmentVolatility;
+	let analysisYears = DEFAULTS.analysisYears;
 
 	// Clamp values to respect min/max constraints
 	$: loanAmount = Math.max(0, Math.min(10000000, loanAmount));
@@ -223,19 +246,61 @@
 		}
 	} satisfies Chart.ChartConfig;
 
+	// Scenarios chart config
+	const scenariosChartConfig = {
+		worst: {
+			label: "Worst Case",
+			color: "#ef4444"
+		},
+		expected: {
+			label: "Expected",
+			color: "#3b82f6"
+		},
+		best: {
+			label: "Best Case",
+			color: "#22c55e"
+		}
+	} satisfies Chart.ChartConfig;
+
+	// Reactive scenario data - yearly values for all three scenarios
+	$: scenarioYearlyData = (() => {
+		const data: { year: number; worst: number; expected: number; best: number }[] = [];
+		let worstValue = downPayment;
+		let expectedValue = downPayment;
+		let bestValue = downPayment;
+		const worstMonthlyRate = worstCaseReturn / 100 / 12;
+		const expectedMonthlyRate = investmentRate / 100 / 12;
+		const bestMonthlyRate = bestCaseReturn / 100 / 12;
+		
+		for (let year = 1; year <= analysisYears; year++) {
+			for (let month = 0; month < 12; month++) {
+				worstValue *= (1 + worstMonthlyRate);
+				expectedValue *= (1 + expectedMonthlyRate);
+				bestValue *= (1 + bestMonthlyRate);
+				if (year <= loanTermYears) {
+					worstValue += monthlyPayment;
+					expectedValue += monthlyPayment;
+					bestValue += monthlyPayment;
+				}
+			}
+			data.push({ year, worst: worstValue, expected: expectedValue, best: bestValue });
+		}
+		return data;
+	})();
+
 	// Keep lastYearData for metrics
 	$: lastYearData = yearlyData[yearlyData.length - 1];
 
 	function resetValues() {
-		loanAmount = 200000;
-		interestRate = 4.5;
-		loanTermYears = 30;
-		downPayment = 40000;
-		deferralMonths = 0;
-		deferralType = 'complete';
-		investmentRate = 7.0;
-		investmentVolatility = 15;
-		analysisYears = 40;
+		loanAmount = DEFAULTS.loanAmount;
+		interestRate = DEFAULTS.interestRate;
+		loanTermYears = DEFAULTS.loanTermYears;
+		downPayment = DEFAULTS.downPayment;
+		deferralMonths = DEFAULTS.deferralMonths;
+		deferralType = DEFAULTS.deferralType;
+		investmentRate = DEFAULTS.investmentRate;
+		investmentVolatility = DEFAULTS.investmentVolatility;
+		analysisYears = DEFAULTS.analysisYears;
 	}
 </script>
 
@@ -626,31 +691,63 @@
 
 					<!-- Investment Analysis (Right) -->
 					<div class="rounded-lg border bg-card p-4 shadow-sm">
-						<h3 class="mb-3 text-base font-semibold">Investment Analysis</h3>
+						<h3 class="mb-3 text-base font-semibold">Volatility Scenarios</h3>
+						<p class="text-xs text-muted-foreground mb-4">Final investment value after {analysisYears} years based on ±1 standard deviation</p>
 						
-						<!-- Volatility Scenarios -->
-						<h4 class="font-medium mb-3">Volatility Scenarios</h4>
-						<div class="space-y-3">
-							<div class="flex justify-between items-center p-3 rounded-lg bg-green-50 dark:bg-green-950/50">
-								<div>
-									<p class="text-sm font-medium text-green-700 dark:text-green-300">Best Case ({formatPercent(bestCaseReturn)})</p>
-									<p class="text-xs text-green-600 dark:text-green-400">+1 standard deviation</p>
-								</div>
-								<p class="text-lg font-semibold text-green-700 dark:text-green-300">{formatCurrency(bestCaseValue)}</p>
+						<Chart.Container config={scenariosChartConfig} class="h-64 w-full overflow-hidden">
+							<AreaChart
+								legend
+								data={scenarioYearlyData}
+								x="year"
+								xScale={scaleLinear()}
+								yPadding={[0, 25]}
+								padding={{ left: 60, right: 16, top: 16, bottom: 40 }}
+								series={[
+									{ key: "worst", label: `Pessimistic (${formatPercent(worstCaseReturn)})`, color: scenariosChartConfig.worst.color },
+									{ key: "expected", label: `Expected (${formatPercent(investmentRate)})`, color: scenariosChartConfig.expected.color },
+									{ key: "best", label: `Optimistic (${formatPercent(bestCaseReturn)})`, color: scenariosChartConfig.best.color },
+								]}
+								props={{
+									area: {
+										curve: curveNatural,
+										"fill-opacity": 0.15,
+										line: { class: "stroke-2" },
+										motion: "tween",
+									},
+									xAxis: {
+										format: (v: number) => `Y${v}`,
+									},
+									yAxis: {
+										format: (v: number) => {
+											if (v >= 1000000) return `${(v / 1000000).toFixed(1)}M`;
+											if (v >= 1000) return `${(v / 1000).toFixed(0)}K`;
+											return v.toString();
+										},
+									},
+								}}
+							>
+								{#snippet tooltip()}
+									<Chart.Tooltip
+										labelFormatter={(v: number) => `Year ${v}`}
+										indicator="line"
+									/>
+								{/snippet}
+							</AreaChart>
+						</Chart.Container>
+						
+						<!-- Legend with rates -->
+						<div class="grid grid-cols-3 gap-2 mt-4 text-xs text-center">
+							<div class="p-2 rounded bg-red-50 dark:bg-red-950/50">
+								<p class="font-medium text-red-700 dark:text-red-300">{formatPercent(worstCaseReturn)}</p>
+								<p class="text-red-600 dark:text-red-400">{formatCurrency(worstCaseValue)}</p>
 							</div>
-							<div class="flex justify-between items-center p-3 rounded-lg bg-secondary/50">
-								<div>
-									<p class="text-sm font-medium">Expected ({formatPercent(investmentRate)})</p>
-									<p class="text-xs text-muted-foreground">Base scenario</p>
-								</div>
-								<p class="text-lg font-semibold">{formatCurrency(finalInvestmentValue)}</p>
+							<div class="p-2 rounded bg-blue-50 dark:bg-blue-950/50">
+								<p class="font-medium text-blue-700 dark:text-blue-300">{formatPercent(investmentRate)}</p>
+								<p class="text-blue-600 dark:text-blue-400">{formatCurrency(finalInvestmentValue)}</p>
 							</div>
-							<div class="flex justify-between items-center p-3 rounded-lg bg-red-50 dark:bg-red-950/50">
-								<div>
-									<p class="text-sm font-medium text-red-700 dark:text-red-300">Worst Case ({formatPercent(worstCaseReturn)})</p>
-									<p class="text-xs text-red-600 dark:text-red-400">-1 standard deviation</p>
-								</div>
-								<p class="text-lg font-semibold text-red-700 dark:text-red-300">{formatCurrency(worstCaseValue)}</p>
+							<div class="p-2 rounded bg-green-50 dark:bg-green-950/50">
+								<p class="font-medium text-green-700 dark:text-green-300">{formatPercent(bestCaseReturn)}</p>
+								<p class="text-green-600 dark:text-green-400">{formatCurrency(bestCaseValue)}</p>
 							</div>
 						</div>
 					</div>
