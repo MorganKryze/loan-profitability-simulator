@@ -35,6 +35,15 @@
 	let investmentVolatility = 15; // Standard deviation (risk measure)
 	let analysisYears = 40; // Total years to analyze (including post-loan)
 
+	// Clamp values to respect min/max constraints
+	$: loanAmount = Math.max(0, Math.min(10000000, loanAmount));
+	$: downPayment = Math.max(0, Math.min(loanAmount, downPayment));
+	$: interestRate = Math.max(0, Math.min(20, interestRate));
+	$: loanTermYears = Math.max(1, Math.min(40, loanTermYears));
+	$: investmentRate = Math.max(0, Math.min(30, investmentRate));
+	$: investmentVolatility = Math.max(0, Math.min(100, investmentVolatility));
+	$: analysisYears = Math.max(loanTermYears, Math.min(60, analysisYears));
+
 	// Risk level classification
 	$: riskLevel = investmentVolatility < 10 ? 'Low' : investmentVolatility < 20 ? 'Medium' : 'High';
 	$: riskColor = investmentVolatility < 10 ? 'text-green-600' : investmentVolatility < 20 ? 'text-yellow-600' : 'text-red-600';
@@ -205,6 +214,7 @@
 							type="number"
 							bind:value={loanAmount}
 							min="0"
+							max="10000000"
 							step="1000"
 						/>
 						<p class="text-xs text-muted-foreground">{formatCurrency(loanAmount)}</p>
