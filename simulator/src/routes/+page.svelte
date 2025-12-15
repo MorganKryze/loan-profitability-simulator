@@ -167,9 +167,11 @@
 
 	$: yearlyData = (() => {
 		const data: YearlyData[] = [];
-		let investmentValue = downPayment; // Start with down payment invested instead
+		// Strategy: Take a loan, invest the principal immediately, pay off the loan over time
+		// Investment starts with the borrowed amount (principal)
+		let investmentValue = principal;
 		let loanBalance = principal;
-		let totalPaid = downPayment;
+		let totalPaid = 0; // Track all payments made
 		const monthlyInvestmentRate = investmentRate / 100 / 12;
 		let totalMonthsElapsed = 0;
 		
@@ -185,9 +187,7 @@
 				investmentValue *= (1 + monthlyInvestmentRate);
 				
 				// Insurance is paid every month during the loan term (including deferral)
-				// Add insurance to investment (what you could invest instead of paying insurance)
 				if (isLoanActiveMonth) {
-					investmentValue += insuranceCost;
 					totalPaid += insuranceCost;
 				}
 				
@@ -199,12 +199,10 @@
 					} else {
 						// Partial deferral: only interest is paid monthly, principal stays the same
 						const interestOnly = loanBalance * monthlyRate;
-						investmentValue += interestOnly;
 						totalPaid += interestOnly;
 					}
 				} else if (isRepaymentMonth) {
-					// During repayment: add monthly payment to investment (what you could invest instead)
-					investmentValue += monthlyPayment;
+					// During repayment: pay monthly payment
 					totalPaid += monthlyPayment;
 					
 					// Calculate remaining loan balance
@@ -247,23 +245,13 @@
 	$: worstCaseReturn = investmentRate - investmentVolatility;
 	
 	// Calculate final values with volatility scenarios
+	// Same logic: borrow principal, invest it, let it grow
 	$: scenarioCalculation = (rate: number) => {
-		let value = downPayment;
+		let value = principal;
 		const monthlyRate = rate / 100 / 12;
-		let monthsElapsed = 0;
 		for (let year = 1; year <= analysisYears; year++) {
 			for (let month = 0; month < 12; month++) {
-				monthsElapsed++;
 				value *= (1 + monthlyRate);
-				// Add payments that could have been invested instead
-				if (monthsElapsed <= totalLoanMonths) {
-					value += insuranceCost;
-				}
-				if (monthsElapsed > deferralMonths && monthsElapsed <= totalLoanMonths) {
-					value += monthlyPayment;
-				} else if (monthsElapsed <= deferralMonths && deferralType === 'partial') {
-					value += principal * (interestRate / 100 / 12);
-				}
 			}
 		}
 		return value;
@@ -322,38 +310,21 @@
 	} satisfies Chart.ChartConfig;
 
 	// Reactive scenario data - yearly values for all three scenarios
+	// Same logic: borrow principal, invest it, let it grow with different return rates
 	$: scenarioYearlyData = (() => {
 		const data: { year: number; worst: number; expected: number; best: number }[] = [];
-		let worstValue = downPayment;
-		let expectedValue = downPayment;
-		let bestValue = downPayment;
+		let worstValue = principal;
+		let expectedValue = principal;
+		let bestValue = principal;
 		const worstMonthlyRate = worstCaseReturn / 100 / 12;
 		const expectedMonthlyRate = investmentRate / 100 / 12;
 		const bestMonthlyRate = bestCaseReturn / 100 / 12;
-		let monthsElapsed = 0;
 		
 		for (let year = 1; year <= analysisYears; year++) {
 			for (let month = 0; month < 12; month++) {
-				monthsElapsed++;
 				worstValue *= (1 + worstMonthlyRate);
 				expectedValue *= (1 + expectedMonthlyRate);
 				bestValue *= (1 + bestMonthlyRate);
-				// Add payments that could have been invested instead
-				if (monthsElapsed <= totalLoanMonths) {
-					worstValue += insuranceCost;
-					expectedValue += insuranceCost;
-					bestValue += insuranceCost;
-				}
-				if (monthsElapsed > deferralMonths && monthsElapsed <= totalLoanMonths) {
-					worstValue += monthlyPayment;
-					expectedValue += monthlyPayment;
-					bestValue += monthlyPayment;
-				} else if (monthsElapsed <= deferralMonths && deferralType === 'partial') {
-					const interestOnly = principal * (interestRate / 100 / 12);
-					worstValue += interestOnly;
-					expectedValue += interestOnly;
-					bestValue += interestOnly;
-				}
 			}
 			data.push({ year, worst: worstValue, expected: expectedValue, best: bestValue });
 		}
@@ -681,7 +652,7 @@
 									Loan Profitability Simulator
 								</h1>
 								<p class="text-muted-foreground">
-									Discover if your loan can work for you, not against you.
+									Can your debt actually make you money?
 								</p>
 							</div>
 							<!-- Currency Selector -->
