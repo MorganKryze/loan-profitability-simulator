@@ -53,6 +53,40 @@
 		analysisYears: 40,
 	};
 
+	// Investment presets
+	type InvestmentPreset = {
+		id: string;
+		name: string;
+		returnRate: number;
+		volatility: number;
+		description: string;
+	};
+
+	const investmentPresets: InvestmentPreset[] = [
+		{ id: 'custom', name: 'Custom', returnRate: 7, volatility: 3, description: 'Set your own values' },
+		{ id: 'savings', name: 'Savings Account', returnRate: 2, volatility: 0.5, description: 'Low risk, guaranteed returns' },
+		{ id: 'bonds', name: 'Government Bonds', returnRate: 4, volatility: 5, description: 'Low-medium risk, stable income' },
+		{ id: 'corporate-bonds', name: 'Corporate Bonds', returnRate: 5.5, volatility: 8, description: 'Medium risk, higher yield' },
+		{ id: 'balanced', name: 'Balanced Fund (60/40)', returnRate: 6.5, volatility: 10, description: 'Mixed stocks and bonds' },
+		{ id: 'sp500', name: 'S&P 500 Index', returnRate: 10, volatility: 15, description: 'US large-cap stocks' },
+		{ id: 'world-stocks', name: 'World Stocks (MSCI)', returnRate: 8, volatility: 17, description: 'Global diversified equities' },
+		{ id: 'real-estate', name: 'Real Estate Crowdfunding', returnRate: 8, volatility: 12, description: 'Property investments, illiquid' },
+		{ id: 'reit', name: 'REITs', returnRate: 9, volatility: 20, description: 'Real estate investment trusts' },
+		{ id: 'emerging', name: 'Emerging Markets', returnRate: 11, volatility: 25, description: 'Higher growth, higher risk' },
+		{ id: 'crypto', name: 'Crypto (BTC/ETH)', returnRate: 30, volatility: 80, description: 'Extremely volatile, speculative' },
+	];
+
+	let selectedPresetId = 'custom';
+	$: selectedPreset = investmentPresets.find(p => p.id === selectedPresetId) || investmentPresets[0];
+
+	function applyPreset(presetId: string) {
+		const preset = investmentPresets.find(p => p.id === presetId);
+		if (preset && presetId !== 'custom') {
+			investmentRate = preset.returnRate;
+			investmentVolatility = preset.volatility;
+		}
+	}
+
 	// Input values
 	let loanAmount = DEFAULTS.loanAmount;
 	let interestRate = DEFAULTS.interestRate;
@@ -337,6 +371,7 @@
 		investmentRate = DEFAULTS.investmentRate;
 		investmentVolatility = DEFAULTS.investmentVolatility;
 		analysisYears = DEFAULTS.analysisYears;
+		selectedPresetId = 'custom';
 	}
 </script>
 
@@ -525,6 +560,36 @@
 				<div class="space-y-4">
 					<h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Investment Parameters</h3>
 					
+					<!-- Investment Preset Selector -->
+					<div class="space-y-2">
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								{#snippet child({ props })}
+									<label {...props} for="investment-preset" class="text-sm font-medium cursor-help">Investment Type ⓘ</label>
+								{/snippet}
+							</Tooltip.Trigger>
+							<Tooltip.Content>
+								<p>Select a preset or customize your own values</p>
+							</Tooltip.Content>
+						</Tooltip.Root>
+						<Select.Root type="single" bind:value={selectedPresetId} onValueChange={applyPreset}>
+							<Select.Trigger id="investment-preset" class="w-full">
+								{selectedPreset.name}
+							</Select.Trigger>
+							<Select.Content>
+								{#each investmentPresets as preset}
+									<Select.Item value={preset.id}>
+										<div class="flex flex-col">
+											<span>{preset.name}</span>
+											<span class="text-xs text-muted-foreground">{preset.returnRate}% · ±{preset.volatility}%</span>
+										</div>
+									</Select.Item>
+								{/each}
+							</Select.Content>
+						</Select.Root>
+						<p class="text-xs text-muted-foreground">{selectedPreset.description}</p>
+					</div>
+
 					<!-- Expected Return Rate -->
 					<div class="space-y-2">
 						<Tooltip.Root>
