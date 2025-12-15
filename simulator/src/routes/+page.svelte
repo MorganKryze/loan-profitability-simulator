@@ -9,7 +9,7 @@
 	import { AreaChart } from "layerchart";
 	import { scaleLinear } from "d3-scale";
 	import { curveNatural } from "d3-shape";
-
+	import { onMount } from "svelte";
 	// Currency configuration
 	type Currency = {
 		code: string;
@@ -429,6 +429,60 @@
 		inflationRate = DEFAULTS.inflationRate;
 		selectedPresetId = 'custom';
 	}
+
+	// Share functionality
+	let showCopiedMessage = false;
+
+	function generateShareUrl() {
+		const params = new URLSearchParams({
+			loanAmount: loanAmount.toString(),
+			interestRate: interestRate.toString(),
+			loanTermYears: loanTermYears.toString(),
+			downPayment: downPayment.toString(),
+			deferralMonths: deferralMonths.toString(),
+			deferralType: deferralType,
+			insuranceCost: insuranceCost.toString(),
+			investmentRate: investmentRate.toString(),
+			investmentVolatility: investmentVolatility.toString(),
+			additionalYears: additionalYears.toString(),
+			inflationRate: inflationRate.toString(),
+			selectedPresetId: selectedPresetId,
+			currency: selectedCurrencyCode,
+		});
+		return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+	}
+
+	async function copyShareLink() {
+		const url = generateShareUrl();
+		try {
+			await navigator.clipboard.writeText(url);
+			showCopiedMessage = true;
+			setTimeout(() => {
+				showCopiedMessage = false;
+			}, 2000);
+		} catch (err) {
+			console.error('Failed to copy:', err);
+		}
+	}
+
+	// Load parameters from URL on mount
+	onMount(() => {
+		const params = new URLSearchParams(window.location.search);
+
+		if (params.has('loanAmount')) loanAmount = Number(params.get('loanAmount'));
+		if (params.has('interestRate')) interestRate = Number(params.get('interestRate'));
+		if (params.has('loanTermYears')) loanTermYears = Number(params.get('loanTermYears'));
+		if (params.has('downPayment')) downPayment = Number(params.get('downPayment'));
+		if (params.has('deferralMonths')) deferralMonths = Number(params.get('deferralMonths'));
+		if (params.has('deferralType')) deferralType = params.get('deferralType') as 'complete' | 'partial';
+		if (params.has('insuranceCost')) insuranceCost = Number(params.get('insuranceCost'));
+		if (params.has('investmentRate')) investmentRate = Number(params.get('investmentRate'));
+		if (params.has('investmentVolatility')) investmentVolatility = Number(params.get('investmentVolatility'));
+		if (params.has('additionalYears')) additionalYears = Number(params.get('additionalYears'));
+		if (params.has('inflationRate')) inflationRate = Number(params.get('inflationRate'));
+		if (params.has('selectedPresetId')) selectedPresetId = params.get('selectedPresetId') || 'custom';
+		if (params.has('currency')) selectedCurrencyCode = params.get('currency') || 'USD';
+	});
 </script>
 
 <Tooltip.Provider>
@@ -766,7 +820,36 @@
 									Can your debt actually make you money?
 								</p>
 							</div>
-							<!-- Currency Selector -->
+							<!-- Currency Selector and Share Link -->
+							<div class="flex items-center gap-6">
+								<!-- Share Button -->
+								<Tooltip.Root>
+									<Tooltip.Trigger>
+										{#snippet child({ props })}
+											<Button
+												{...props}
+												variant="outline"
+												size="icon"
+												onclick={copyShareLink}
+												class="relative"
+											>
+												{#if showCopiedMessage}
+													<span class="text-xs">✓</span>
+												{:else}
+													<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+														<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+														<path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+													</svg>
+												{/if}
+											</Button>
+										{/snippet}
+									</Tooltip.Trigger>
+									<Tooltip.Content>
+										<p>{showCopiedMessage ? 'Link copied!' : 'Copy shareable link'}</p>
+									</Tooltip.Content>
+								</Tooltip.Root>
+
+								<!-- Currency Selector -->
 							<div class="flex items-center gap-2">
 								<span class="text-sm font-medium text-muted-foreground">Currency:</span>
 								<Select.Root type="single" bind:value={selectedCurrencyCode}>
@@ -781,6 +864,7 @@
 										{/each}
 									</Select.Content>
 								</Select.Root>
+						</div>
 							</div>
 						</div>
 					</div>
