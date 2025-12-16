@@ -846,9 +846,10 @@
 									Can your debt actually make you money?
 								</p>
 							</div>
-							<!-- Currency Selector and Share Link -->
-							<div class="flex items-center gap-6">
+							<!-- Share Link -->
+							<div class="flex items-center gap-2">
 								<!-- Share Button -->
+								<p class="text-sm text-muted-foreground hidden md:block">Share your simulation:</p>
 								<Tooltip.Root>
 									<Tooltip.Trigger>
 										{#snippet child({ props })}
