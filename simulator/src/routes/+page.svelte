@@ -902,7 +902,7 @@
 							{formatCurrency(finalInterestEarned - totalLoanBorrowingCost)}
 						</span>
 						<span class="text-sm {isPositiveROIReal ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">
-							(Real: {formatCurrency(finalInterestEarnedReal - totalLoanBorrowingCostReal)})
+							(Inflation-adjusted: {formatCurrency(finalInterestEarnedReal - totalLoanBorrowingCostReal)})
 						</span>
 					</p>
 					<p class="text-xs text-muted-foreground mt-1">
