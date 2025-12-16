@@ -872,14 +872,14 @@
 					<!-- Dashboard: Key Metrics First -->
 					<!-- Top Row: Most Important Info -->
 					<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 mb-4">
-				<!-- Monthly Payment - Most Prominent -->
-				<div class="sm:col-span-2 lg:col-span-2 rounded-lg border bg-linear-to-br from-primary/10 to-primary/5 p-6 shadow-sm">
-					<p class="text-sm font-medium text-muted-foreground">Monthly Payment</p>
-					<p class="text-4xl font-bold tracking-tight mt-2">
-						{formatCurrency(monthlyPayment)}
-					</p>
-					<p class="text-xs text-muted-foreground mt-1">{numberOfPayments} payments over {loanTermYears} years</p>
-				</div>
+				   <!-- Monthly Cost (Payment + Insurance) - Most Prominent -->
+				   <div class="sm:col-span-2 lg:col-span-2 rounded-lg border bg-linear-to-br from-primary/10 to-primary/5 p-6 shadow-sm">
+					   <p class="text-sm font-medium text-muted-foreground">Monthly Payment</p>
+					   <p class="text-4xl font-bold tracking-tight mt-2">
+						   {formatCurrency(monthlyPayment + insuranceCost)}
+					   </p>
+					   <p class="text-xs text-muted-foreground mt-1">{numberOfPayments} payments over {loanTermYears} years</p>
+				   </div>
 
 				<!-- ROI Status -->
 				<div class="sm:col-span-2 lg:col-span-3 rounded-lg border p-6 shadow-sm {isPositiveROI ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800'}">
@@ -1051,9 +1051,9 @@
 								yPadding={[0, 25]}
 								padding={{ left: 60, right: 16, top: 16, bottom: 40 }}
 								series={[
-									{ key: "worst", label: `Pessimistic (${formatPercent(worstCaseReturn)})`, color: scenariosChartConfig.worst.color },
-									{ key: "expected", label: `Expected (${formatPercent(investmentRate)})`, color: scenariosChartConfig.expected.color },
 									{ key: "best", label: `Optimistic (${formatPercent(bestCaseReturn)})`, color: scenariosChartConfig.best.color },
+									{ key: "expected", label: `Expected (${formatPercent(investmentRate)})`, color: scenariosChartConfig.expected.color },
+									{ key: "worst", label: `Pessimistic (${formatPercent(worstCaseReturn)})`, color: scenariosChartConfig.worst.color },
 								]}
 								props={{
 									area: {
@@ -1085,17 +1085,17 @@
 						
 						<!-- Legend with rates -->
 						<div class="grid grid-cols-3 gap-2 mt-4 text-xs text-center">
-							<div class="p-2 rounded bg-red-50 dark:bg-red-950/50">
-								<p class="font-medium text-red-700 dark:text-red-300">{formatPercent(worstCaseReturn)}</p>
-								<p class="text-red-600 dark:text-red-400">{formatCurrency(worstCaseValue)}</p>
+							<div class="p-2 rounded bg-green-50 dark:bg-green-950/50">
+								<p class="font-medium text-green-700 dark:text-green-300">{formatPercent(bestCaseReturn)}</p>
+								<p class="text-green-600 dark:text-green-400">{formatCurrency(bestCaseValue)}</p>
 							</div>
 							<div class="p-2 rounded bg-blue-50 dark:bg-blue-950/50">
 								<p class="font-medium text-blue-700 dark:text-blue-300">{formatPercent(investmentRate)}</p>
 								<p class="text-blue-600 dark:text-blue-400">{formatCurrency(finalInvestmentValue)}</p>
 							</div>
-							<div class="p-2 rounded bg-green-50 dark:bg-green-950/50">
-								<p class="font-medium text-green-700 dark:text-green-300">{formatPercent(bestCaseReturn)}</p>
-								<p class="text-green-600 dark:text-green-400">{formatCurrency(bestCaseValue)}</p>
+							<div class="p-2 rounded bg-red-50 dark:bg-red-950/50">
+								<p class="font-medium text-red-700 dark:text-red-300">{formatPercent(worstCaseReturn)}</p>
+								<p class="text-red-600 dark:text-red-400">{formatCurrency(worstCaseValue)}</p>
 							</div>
 						</div>
 					</div>
