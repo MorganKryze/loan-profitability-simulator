@@ -799,11 +799,37 @@
 					</div>
 				</div>
 			</Sidebar.Content>
-			<Sidebar.Footer class="p-4 border-t group-data-[collapsible=icon]:hidden">
-				<Button onclick={resetValues} variant="outline" class="w-full">
-					Reset to Defaults
-				</Button>
-			</Sidebar.Footer>
+				<Sidebar.Footer class="p-4 border-t group-data-[collapsible=icon]:hidden">
+				    <div class="flex flex-row items-center gap-2 w-full">
+				        <!-- Reset Button -->
+				        <Button
+				            onclick={resetValues}
+				            variant="outline"
+				            class="flex-1 text-sm py-1 px-2 h-8"
+				        >
+				            Reset
+				        </Button>
+					
+				        <!-- Currency Selector -->
+				        <div class="w-24">
+				            <Select.Root type="single" bind:value={selectedCurrencyCode}>
+				                <Select.Trigger class="w-full h-8 text-sm py-1 px-2">
+				                    <span class="truncate">
+				                        {selectedCurrency.symbol} {selectedCurrency.code}
+				                    </span>
+				                </Select.Trigger>
+				                <Select.Content>
+				                    {#each currencies as currency}
+				                        <Select.Item value={currency.code} class="text-sm">
+				                            {currency.symbol} {currency.code}
+				                        </Select.Item>
+				                    {/each}
+				                </Select.Content>
+				            </Select.Root>
+				        </div>
+				    </div>
+				</Sidebar.Footer>
+
 		</Sidebar.Root>
 
 		<Sidebar.Inset>
@@ -848,23 +874,6 @@
 										<p>{showCopiedMessage ? 'Link copied!' : 'Copy shareable link'}</p>
 									</Tooltip.Content>
 								</Tooltip.Root>
-
-								<!-- Currency Selector -->
-							<div class="flex items-center gap-2">
-								<span class="text-sm font-medium text-muted-foreground">Currency:</span>
-								<Select.Root type="single" bind:value={selectedCurrencyCode}>
-									<Select.Trigger class="w-30">
-										{selectedCurrency.symbol} {selectedCurrency.code}
-									</Select.Trigger>
-									<Select.Content>
-										{#each currencies as currency}
-											<Select.Item value={currency.code}>
-												{currency.symbol} {currency.code}
-											</Select.Item>
-										{/each}
-									</Select.Content>
-								</Select.Root>
-						</div>
 							</div>
 						</div>
 					</div>
