@@ -829,7 +829,6 @@
 				        </div>
 				    </div>
 				</Sidebar.Footer>
-
 		</Sidebar.Root>
 
 		<Sidebar.Inset>
