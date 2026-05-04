@@ -1117,23 +1117,28 @@
 				<!-- Yearly Breakdown Table -->
 					<div class="rounded-lg border bg-card p-6 shadow-sm">
 						<h3 class="mb-4 text-lg font-semibold">Profitability Over Time</h3>
-						<p class="text-xs text-muted-foreground mb-3">Break-even when Investment Gains ≥ Total Loan Cost ({formatCurrency(totalLoanBorrowingCost)})</p>
+						<p class="text-xs text-muted-foreground mb-3">Year-over-year variation. Break-even (cumulative) when Investment Gains ≥ Total Loan Cost ({formatCurrency(totalLoanBorrowingCost)})</p>
 						<div class="overflow-x-auto max-h-96 overflow-y-auto">
 							<table class="w-full text-sm">
 								<thead class="sticky top-0 bg-card">
 									<tr class="border-b">
 										<th class="text-left py-2 px-2">Year</th>
 										<th class="text-right py-2 px-2">Investment Value</th>
-										<th class="text-right py-2 px-2">Investment Gains</th>
-										<th class="text-right py-2 px-2">Total Paid</th>
-										<th class="text-right py-2 px-2">vs Loan Cost</th>
+										<th class="text-right py-2 px-2">Δ Investment Gains</th>
+										<th class="text-right py-2 px-2">Δ Total Paid</th>
+										<th class="text-right py-2 px-2">Δ Net (Gain − Cost)</th>
 										<th class="text-center py-2 px-2">Status</th>
 									</tr>
 								</thead>
 								<tbody>
 									{#each yearlyData as data, i}
+										{@const prev = i > 0 ? yearlyData[i - 1] : data}
+										{@const yearlyGain = data.interestEarned - prev.interestEarned}
+										{@const yearlyPaid = data.totalPaid - prev.totalPaid}
+										{@const yearlyCost = data.totalBorrowingCost - prev.totalBorrowingCost}
+										{@const yearlyNet = yearlyGain - yearlyCost}
+										{@const cumulativeNet = data.interestEarned - totalLoanBorrowingCost}
 										{@const isBreakEven = breakEvenYear === data.year}
-										{@const vsLoanCost = data.interestEarned - totalLoanBorrowingCost}
 										<tr class="border-b border-border/50 {data.year === totalLoanYears ? 'bg-primary/5' : ''} {isBreakEven ? 'bg-green-100 dark:bg-green-900/30' : ''}">
 											<td class="py-2 px-2 font-medium">
 												{data.year}
@@ -1145,15 +1150,15 @@
 												{/if}
 											</td>
 											<td class="text-right py-2 px-2">{formatCurrency(data.investmentValue)}</td>
-											<td class="text-right py-2 px-2 text-green-600">{formatCurrency(data.interestEarned)}</td>
-											<td class="text-right py-2 px-2 text-orange-600">{formatCurrency(data.totalPaid)}</td>
-											<td class="text-right py-2 px-2 font-medium {vsLoanCost >= 0 ? 'text-green-600' : 'text-red-600'}">
-												{vsLoanCost >= 0 ? '+' : ''}{formatCurrency(vsLoanCost)}
+											<td class="text-right py-2 px-2 text-green-600">{i === 0 ? formatCurrency(0) : (yearlyGain >= 0 ? '+' : '') + formatCurrency(yearlyGain)}</td>
+											<td class="text-right py-2 px-2 text-orange-600">{i === 0 ? formatCurrency(0) : (yearlyPaid >= 0 ? '+' : '') + formatCurrency(yearlyPaid)}</td>
+											<td class="text-right py-2 px-2 font-medium {yearlyNet >= 0 ? 'text-green-600' : 'text-red-600'}">
+												{i === 0 ? formatCurrency(0) : (yearlyNet >= 0 ? '+' : '') + formatCurrency(yearlyNet)}
 											</td>
 											<td class="text-center py-2 px-2">
 												{#if data.isLoanActive}
 													<span class="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Repaying</span>
-												{:else if vsLoanCost >= 0}
+												{:else if cumulativeNet >= 0}
 													<span class="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Profitable</span>
 												{:else}
 													<span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Not yet</span>
@@ -1165,7 +1170,7 @@
 							</table>
 						</div>
 						<p class="text-xs text-muted-foreground mt-3">
-							vs Loan Cost = Investment Gains − Total Loan Cost (interest + insurance: {formatCurrency(totalLoanBorrowingCost)})
+							Δ columns show the variation from the previous year. Δ Net = yearly investment gain − yearly loan cost (interest + insurance). Status uses cumulative comparison.
 						</p>
 					</div>
 				</div>
