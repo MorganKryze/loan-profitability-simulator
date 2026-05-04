@@ -1000,27 +1000,6 @@
 						<Tooltip.Trigger>
 							{#snippet child({ props })}
 								<p {...props} class="text-xs text-muted-foreground flex items-center gap-1 cursor-help">
-									🎯 Break-even Investment Rate ⓘ
-								</p>
-							{/snippet}
-						</Tooltip.Trigger>
-						<Tooltip.Content class="max-w-xs">
-							<p class="font-semibold mb-1">The hurdle your investment must clear</p>
-							<p class="text-xs">This is the minimum yearly return your investment needs to earn back everything the loan costs you (interest + insurance).</p>
-							<p class="text-xs mt-1"><strong>Above this rate</strong> → you make money. <strong>Below it</strong> → you lose money.</p>
-							<p class="text-xs mt-1 text-muted-foreground">Example: at 4%, your investment must average more than 4%/year for the strategy to be worth it.</p>
-						</Tooltip.Content>
-					</Tooltip.Root>
-					<p class="text-lg font-semibold mt-1 {investmentRate >= breakEvenInvestmentRate ? 'text-green-600' : 'text-red-600'}">
-						{formatPercent(breakEvenInvestmentRate)}
-					</p>
-					<p class="text-xs text-muted-foreground">Min. annual return to cover all loan costs</p>
-				</div>
-				<div class="rounded-lg border bg-card p-3 shadow-sm">
-					<Tooltip.Root>
-						<Tooltip.Trigger>
-							{#snippet child({ props })}
-								<p {...props} class="text-xs text-muted-foreground flex items-center gap-1 cursor-help">
 									💰 Effective APR (incl. insurance) ⓘ
 								</p>
 							{/snippet}
@@ -1036,6 +1015,27 @@
 						{formatPercent(effectiveAPR)}
 					</p>
 					<p class="text-xs text-muted-foreground">True cost of borrowing vs. {formatPercent(interestRate)} nominal</p>
+				</div>
+				<div class="rounded-lg border bg-card p-3 shadow-sm">
+					<Tooltip.Root>
+						<Tooltip.Trigger>
+							{#snippet child({ props })}
+								<p {...props} class="text-xs text-muted-foreground flex items-center gap-1 cursor-help">
+									🎯 Break-even Investment Rate ⓘ
+								</p>
+							{/snippet}
+						</Tooltip.Trigger>
+						<Tooltip.Content class="max-w-xs">
+							<p class="font-semibold mb-1">The hurdle your investment must clear</p>
+							<p class="text-xs">This is the minimum yearly return your investment needs to earn back everything the loan costs you (interest + insurance).</p>
+							<p class="text-xs mt-1"><strong>Above this rate</strong> → you make money. <strong>Below it</strong> → you lose money.</p>
+							<p class="text-xs mt-1 text-muted-foreground">Example: at 4%, your investment must average more than 4%/year for the strategy to be worth it.</p>
+						</Tooltip.Content>
+					</Tooltip.Root>
+					<p class="text-lg font-semibold mt-1 {investmentRate >= breakEvenInvestmentRate ? 'text-green-600' : 'text-red-600'}">
+						{formatPercent(breakEvenInvestmentRate)}
+					</p>
+					<p class="text-xs text-muted-foreground">Min. annual return to cover all loan costs</p>
 				</div>
 				<div class="rounded-lg border bg-card p-3 shadow-sm">
 					<Tooltip.Root>
