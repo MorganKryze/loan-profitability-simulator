@@ -130,8 +130,9 @@
 	// Reactive calculations
 	// For complete deferral: interest accrues and is added to principal (capitalized interest)
 	// For partial deferral: interest is paid monthly during deferral, principal stays the same
+	$: principal = loanAmount - downPayment;
 	$: principalAfterDeferral = (() => {
-		let balance = loanAmount - downPayment;
+		let balance = principal;
 		if (deferralType === 'complete') {
 			// Interest capitalizes during deferral
 			for (let month = 0; month < deferralMonths; month++) {
@@ -142,16 +143,17 @@
 		return balance;
 	})();
 	// Calculate total interest paid during partial deferral period
-	$: deferralInterestPaid = deferralType === 'partial' ? (loanAmount - downPayment) * monthlyRate * deferralMonths : 0;
-	$: principal = loanAmount - downPayment;
+	$: deferralInterestPaid = deferralType === 'partial' ? principal * monthlyRate * deferralMonths : 0;
 	$: monthlyRate = interestRate / 100 / 12;
 	// Deferral is part of the loan term, so repayment period = loan term - deferral
 	$: totalLoanMonths = loanTermYears * 12;
 	$: numberOfPayments = Math.max(1, totalLoanMonths - deferralMonths);
 	$: monthlyPayment =
-		principalAfterDeferral > 0 && monthlyRate > 0
-			? (principalAfterDeferral * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments))) /
-				(Math.pow(1 + monthlyRate, numberOfPayments) - 1)
+		principalAfterDeferral > 0
+			? monthlyRate > 0
+				? (principalAfterDeferral * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments))) /
+					(Math.pow(1 + monthlyRate, numberOfPayments) - 1)
+				: principalAfterDeferral / numberOfPayments
 			: 0;
 	$: totalPayment = monthlyPayment * numberOfPayments;
 	// Total interest = payments during repayment - original principal + interest paid during partial deferral
@@ -248,13 +250,13 @@
 						totalBorrowingCost += interestOnly;
 					}
 				} else if (isRepaymentMonth) {
-					// During repayment: pay monthly payment
-					totalPaid += monthlyPayment;
-					
-					// Calculate remaining loan balance and interest portion
+					// During repayment: pay monthly payment, but never more than what's owed
 					const interestPayment = loanBalance * monthlyRate;
-					const principalPayment = monthlyPayment - interestPayment;
-					loanBalance = Math.max(0, loanBalance - principalPayment);
+					const principalPayment = Math.min(loanBalance, monthlyPayment - interestPayment);
+					const actualPayment = principalPayment + interestPayment;
+					totalPaid += actualPayment;
+					loanBalance -= principalPayment;
+					if (loanBalance < 0.005) loanBalance = 0; // Clamp FP residue
 					totalBorrowingCost += interestPayment; // Only the interest portion is a cost
 				}
 			}
@@ -312,13 +314,15 @@
 	// Break-even: year when investment interest earned exceeds the FINAL total borrowing cost
 	// This is when your investment gains cover ALL the costs of the loan
 	$: breakEvenYear = (() => {
-		const found = yearlyData.find(d => d.interestEarned >= totalLoanBorrowingCost);
+		if (totalLoanBorrowingCost <= 0) return null;
+		const found = yearlyData.find(d => d.year > 0 && d.interestEarned >= totalLoanBorrowingCost);
 		return found ? found.year : null;
 	})();
-	
+
 	// Real break-even (inflation-adjusted)
 	$: breakEvenYearReal = (() => {
-		const found = yearlyData.find(d => d.interestEarnedReal >= totalLoanBorrowingCostReal);
+		if (totalLoanBorrowingCostReal <= 0) return null;
+		const found = yearlyData.find(d => d.year > 0 && d.interestEarnedReal >= totalLoanBorrowingCostReal);
 		return found ? found.year : null;
 	})();
 	
