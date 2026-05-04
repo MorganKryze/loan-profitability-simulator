@@ -326,6 +326,60 @@
 		return found ? found.year : null;
 	})();
 	
+	// Break-even investment rate: minimum nominal annual return on the invested principal
+	// such that the final investment value covers principal + total loan cost over analysisYears.
+	// Solves: principal * (1 + r/12)^(12*analysisYears) = principal + totalLoanBorrowingCost
+	$: breakEvenInvestmentRate = (() => {
+		if (principal <= 0 || analysisYears <= 0) return 0;
+		if (totalLoanBorrowingCost <= 0) return 0;
+		const ratio = (principal + totalLoanBorrowingCost) / principal;
+		const monthly = Math.pow(ratio, 1 / (12 * analysisYears)) - 1;
+		return monthly * 12 * 100;
+	})();
+
+	// Effective APR: nominal annual rate that solves NPV = 0 over the loan cash flows,
+	// counting both interest portions AND insurance as cost. Found via bisection.
+	$: effectiveAPR = (() => {
+		if (principal <= 0 || totalLoanMonths <= 0) return 0;
+
+		const cashFlows: number[] = [];
+		for (let m = 1; m <= totalLoanMonths; m++) {
+			if (m <= deferralMonths) {
+				const interestOnly = deferralType === 'partial' ? principal * monthlyRate : 0;
+				cashFlows.push(interestOnly + insuranceCost);
+			} else {
+				cashFlows.push(monthlyPayment + insuranceCost);
+			}
+		}
+
+		const totalOut = cashFlows.reduce((a, b) => a + b, 0);
+		if (totalOut <= principal) return 0; // No cost (or negative) → 0% APR
+
+		const npv = (i: number): number => {
+			let v = principal;
+			for (let m = 0; m < cashFlows.length; m++) {
+				v -= cashFlows[m] / Math.pow(1 + i, m + 1);
+			}
+			return v;
+		};
+
+		let lo = 0;
+		let hi = 1; // 100%/month is far above any realistic rate
+		for (let iter = 0; iter < 100; iter++) {
+			const mid = (lo + hi) / 2;
+			const v = npv(mid);
+			if (Math.abs(v) < 0.001) {
+				return mid * 12 * 100;
+			}
+			if (v < 0) lo = mid;
+			else hi = mid;
+		}
+		return ((lo + hi) / 2) * 12 * 100;
+	})();
+
+	// Margin of safety: how much headroom the chosen investment rate has over the hurdle
+	$: investmentMarginOfSafety = investmentRate - breakEvenInvestmentRate;
+
 	// Volatility-adjusted returns (using simplified model)
 	$: bestCaseReturn = investmentRate + investmentVolatility;
 	$: worstCaseReturn = investmentRate - investmentVolatility;
@@ -936,6 +990,73 @@
 				<div class="rounded-lg border bg-card p-3 shadow-sm">
 					<p class="text-xs text-muted-foreground">Total Cost</p>
 					<p class="text-lg font-semibold mt-1">{formatCurrency(totalCost)}</p>
+				</div>
+			</div>
+
+			<!-- Third Row: Rate KPIs -->
+			<div class="grid gap-3 grid-cols-1 lg:grid-cols-3 mb-4">
+				<div class="rounded-lg border bg-card p-3 shadow-sm">
+					<Tooltip.Root>
+						<Tooltip.Trigger>
+							{#snippet child({ props })}
+								<p {...props} class="text-xs text-muted-foreground flex items-center gap-1 cursor-help">
+									🎯 Break-even Investment Rate ⓘ
+								</p>
+							{/snippet}
+						</Tooltip.Trigger>
+						<Tooltip.Content class="max-w-xs">
+							<p class="font-semibold mb-1">The hurdle your investment must clear</p>
+							<p class="text-xs">This is the minimum yearly return your investment needs to earn back everything the loan costs you (interest + insurance).</p>
+							<p class="text-xs mt-1"><strong>Above this rate</strong> → you make money. <strong>Below it</strong> → you lose money.</p>
+							<p class="text-xs mt-1 text-muted-foreground">Example: at 4%, your investment must average more than 4%/year for the strategy to be worth it.</p>
+						</Tooltip.Content>
+					</Tooltip.Root>
+					<p class="text-lg font-semibold mt-1 {investmentRate >= breakEvenInvestmentRate ? 'text-green-600' : 'text-red-600'}">
+						{formatPercent(breakEvenInvestmentRate)}
+					</p>
+					<p class="text-xs text-muted-foreground">Min. annual return to cover all loan costs</p>
+				</div>
+				<div class="rounded-lg border bg-card p-3 shadow-sm">
+					<Tooltip.Root>
+						<Tooltip.Trigger>
+							{#snippet child({ props })}
+								<p {...props} class="text-xs text-muted-foreground flex items-center gap-1 cursor-help">
+									💰 Effective APR (incl. insurance) ⓘ
+								</p>
+							{/snippet}
+						</Tooltip.Trigger>
+						<Tooltip.Content class="max-w-xs">
+							<p class="font-semibold mb-1">The real cost of your loan</p>
+							<p class="text-xs">Banks usually advertise only the interest rate, but insurance is real money leaving your pocket every month.</p>
+							<p class="text-xs mt-1">This number rolls interest <em>and</em> insurance into one yearly rate — the honest figure to compare against any investment return.</p>
+							<p class="text-xs mt-1 text-muted-foreground">Example: a 4.5% loan with monthly insurance can effectively cost ~5.2%/year.</p>
+						</Tooltip.Content>
+					</Tooltip.Root>
+					<p class="text-lg font-semibold text-orange-600 mt-1">
+						{formatPercent(effectiveAPR)}
+					</p>
+					<p class="text-xs text-muted-foreground">True cost of borrowing vs. {formatPercent(interestRate)} nominal</p>
+				</div>
+				<div class="rounded-lg border bg-card p-3 shadow-sm">
+					<Tooltip.Root>
+						<Tooltip.Trigger>
+							{#snippet child({ props })}
+								<p {...props} class="text-xs text-muted-foreground flex items-center gap-1 cursor-help">
+									📊 Margin of Safety ⓘ
+								</p>
+							{/snippet}
+						</Tooltip.Trigger>
+						<Tooltip.Content class="max-w-xs">
+							<p class="font-semibold mb-1">Your cushion against bad luck</p>
+							<p class="text-xs">The gap between the return you expect from your investment and the minimum return you need to break even.</p>
+							<p class="text-xs mt-1"><strong>Bigger gap</strong> → safer bet, more room for underperformance. <strong>Negative</strong> → you're already betting on returns higher than expected.</p>
+							<p class="text-xs mt-1 text-muted-foreground">Rule of thumb: aim for at least +2% if your investment is volatile.</p>
+						</Tooltip.Content>
+					</Tooltip.Root>
+					<p class="text-lg font-semibold mt-1 {investmentMarginOfSafety >= 0 ? 'text-green-600' : 'text-red-600'}">
+						{investmentMarginOfSafety >= 0 ? '+' : ''}{formatPercent(investmentMarginOfSafety)}
+					</p>
+					<p class="text-xs text-muted-foreground">Investment rate ({formatPercent(investmentRate)}) − hurdle</p>
 				</div>
 			</div>
 
